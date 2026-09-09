@@ -1,6 +1,8 @@
-# Flutter WebView App dengan Domain Lock dan Ad Blocking
+# Flutter WebView App dengan Domain Lock, Ad Blocking & Video Cast
 
-Aplikasi Flutter browser berbasis WebView dengan sistem proteksi keamanan **Domain Lock** dan **Ad Blocking**. Aplikasi ini dirancang khusus untuk mengunci akses navigasi hanya pada domain utama yang ditentukan beserta subdomainnya, serta mencegah kebocoran navigasi ke domain eksternal, aplikasi lain, atau jaringan iklan.
+Aplikasi Flutter browser berbasis WebView dengan sistem proteksi keamanan **Domain Lock**, **Ad Blocking**, serta kemampuan **Deteksi Video Otomatis & Casting ke Smart TV/Chromecast beserta Subtitle**.
+
+Aplikasi ini dirancang khusus untuk mengunci akses navigasi hanya pada domain utama yang ditentukan beserta subdomainnya (mencegah popup iklan / redirect jebakan pada situs streaming seperti IDLIX), mendeteksi stream video (HLS `.m3u8` / `.mp4`) beserta file subtitle (`.vtt` / `.srt`), dan melakukan casting ke perangkat TV di jaringan lokal.
 
 ---
 
@@ -14,31 +16,41 @@ File APK release yang sudah dikompilasi tersedia langsung:
 
 ## ✨ Fitur Utama
 
-1. **URL Input & Auto-Save:**
-   - Menampilkan modal input URL saat pertama kali aplikasi dijalankan.
-   - Normalisasi URL otomatis (menambahkan `https://` jika protokol tidak disertakan).
-   - Menyimpan URL utama secara lokal (`shared_preferences`) dan otomatis memuatnya saat aplikasi dibuka kembali.
-2. **Domain Lock (Allowlist-Based):**
-   - Hanya mengizinkan domain utama dan subdomainnya (contoh: `example.com`, `www.example.com`, `api.example.com`).
-   - Mencegah teknik bypass domain seperti `example.com.evil.com`.
-3. **Navigation & Redirect Interception:**
-   - Memeriksa setiap perpindahan halaman dan redirect website sebelum dieksekusi.
-   - Menggagalkan redirect yang mengarah ke luar domain yang diizinkan.
-4. **External App & Browser Blocking:**
-   - Hanya skema `http://` dan `https://` yang diperbolehkan.
-   - Memblokir skema eksternal seperti `intent://`, `market://`, `whatsapp://`, `mailto:`, `tel:`, `tg:`, dll.
-   - Tidak pernah membuka browser eksternal (Chrome / Custom Tabs).
-5. **Popup & New Window Blocking:**
-   - Mencegah pembukaan window baru atau popup (`window.open()` dan target `_blank`).
-   - Merute ulang navigasi popup ke frame utama agar tetap terkontrol oleh aturan navigasi.
-6. **Ad & Tracker Blocking:**
-   - Memiliki daftar blokir bawaan (`ad_blocklist.dart`) untuk jaringan iklan populer (DoubleClick, AdSense, Taboola, Outbrain, dll.).
-   - Mendukung pencocokan subdomain iklan (seperti `securepubads.g.doubleclick.net`).
-7. **UX & State Handling:**
-   - Loading indicator dengan persentase kemajuan pemuatan.
-   - Error page informatif dilengkapi tombol **Retry**.
-   - Integrasi tombol back Android dengan history navigasi WebView.
-   - Menu pengaturan untuk mengubah URL utama kapan saja.
+### 1. 📺 Deteksi Video & Casting ke Smart TV (Baru!)
+- **Deteksi Otomatis Stream Video:**
+  - Memindai elemen `<video>`, `<source>`, dan interaksi pemutar media (JWPlayer, Video.js, Plyr, DPlayer).
+  - Melakukan intercept network request (`window.fetch` dan `XMLHttpRequest`) untuk menangkap stream HLS (`.m3u8`), MP4, WebM, dsb.
+- **Deteksi & Pilihan Subtitle:**
+  - Mendeteksi tag `<track>` dan file subtitle (`.vtt`, `.srt`) seperti subtitle bahasa Indonesia (`Indonesian`) dan Inggris (`English`).
+  - Memungkinkan pengguna memilih subtitle yang ingin dikirimkan ke perangkat Cast atau memasukkan URL subtitle custom.
+- **Multi-Protocol Casting:**
+  - **Google Cast / Chromecast** (Google TV, Chromecast Dongle, Android TV, Nest Hub).
+  - **DLNA / UPnP** (Samsung Smart TV, LG webOS TV, Sony, Roku, dsb.).
+  - **AirPlay** support.
+- **Kontrol Pemutaran Lengkap (Cast Control Bar & Sheet):**
+  - Tombol Play / Pause / Seek (+10s / -10s / slider progress bar).
+  - Sinkronisasi durasi dan posisi pemutaran.
+  - Ganti subtitle secara real-time.
+  - Pengaturan volume dan pemutusan koneksi (Stop Cast).
+- **Floating Action Button & App Bar Badge:**
+  - Menampilkan badge jumlah video yang terdeteksi di halaman aktif secara dinamis.
+  - Tombol aksi cepat untuk membuka panel Cast.
+
+### 2. 🔒 Domain Lock (Allowlist-Based)
+- Hanya mengizinkan navigasi utama pada domain URL yang ditentukan dan subdomainnya (contoh: `idlixku.com`, `z2.idlixku.com`).
+- Mencegah teknik bypass domain seperti `idlixku.com.evil.com`.
+- Mendukung pemuatan iframe pemutar video pihak ketiga tanpa mengizinkan iframe tersebut membajak jendela utama browser.
+
+### 3. 🛡️ Ad Blocking & Navigation Interception
+- Memblokir skema eksternal (`intent://`, `market://`, `whatsapp://`, `mailto:`, `tel:`, dll.).
+- Memblokir domain iklan populer (DoubleClick, AdSense, Taboola, Outbrain, PopAds, PopCash, dll.).
+- Mencegah pembukaan popup atau window baru (`window.open` dan `target="_blank"` dinetralkan).
+
+### 4. ⚙️ URL Input & Local Storage
+- Menampilkan modal input URL saat pertama kali aplikasi dibuka.
+- Otomatis menormalisasi URL (menambahkan `https://`).
+- Menyimpan URL utama di penyimpanan lokal (`shared_preferences`) dan otomatis memuatnya pada startup berikutnya.
+- Menu pengaturan untuk mengganti URL utama kapan saja.
 
 ---
 
@@ -50,6 +62,18 @@ lib/
 ├── app/
 │   └── app.dart
 ├── features/
+│   ├── cast/
+│   │   ├── models/
+│   │   │   ├── detected_video.dart
+│   │   │   └── detected_subtitle.dart
+│   │   ├── services/
+│   │   │   ├── cast_manager.dart
+│   │   │   └── video_detector_service.dart
+│   │   └── presentation/
+│   │       └── widgets/
+│   │           ├── cast_button.dart
+│   │           ├── cast_control_bar.dart
+│   │           └── cast_modal_bottom_sheet.dart
 │   └── webview/
 │       ├── presentation/
 │       │   ├── pages/
@@ -95,4 +119,4 @@ flutter test
 ```bash
 flutter build apk --release
 ```
-Hasil build akan berada di `build/app/outputs/flutter-apk/app-release.apk`.
+File output build: `build/app/outputs/flutter-apk/app-release.apk`.

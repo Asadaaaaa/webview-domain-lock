@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_domain_lock/core/services/storage_service.dart';
+import 'package:webview_domain_lock/features/cast/models/detected_video.dart';
+import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_button.dart';
+import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_control_bar.dart';
+import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_modal_bottom_sheet.dart';
+import 'package:webview_domain_lock/features/cast/services/cast_manager.dart';
+import 'package:webview_domain_lock/features/cast/services/video_detector_service.dart';
 import 'package:webview_domain_lock/features/webview/models/webview_config.dart';
 import 'package:webview_domain_lock/features/webview/presentation/widgets/loading_overlay.dart';
 import 'package:webview_domain_lock/features/webview/presentation/widgets/url_input_dialog.dart';
@@ -23,6 +29,9 @@ class WebViewPage extends StatefulWidget {
 
 class _WebViewPageState extends State<WebViewPage> {
   late final WebViewNavigationService _navigationService;
+  late final VideoDetectorService _videoDetectorService;
+  late final CastManager _castManager;
+
   WebViewController? _controller;
   WebViewConfig? _config;
 
@@ -35,6 +44,9 @@ class _WebViewPageState extends State<WebViewPage> {
   void initState() {
     super.initState();
     _navigationService = WebViewNavigationService();
+    _videoDetectorService = VideoDetectorService();
+    _castManager = CastManager();
+    _castManager.init();
     _config = widget.initialConfig;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -44,6 +56,12 @@ class _WebViewPageState extends State<WebViewPage> {
         _initializeWebView();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _castManager.stopDiscovery();
+    super.dispose();
   }
 
   /// Menampilkan dialog input URL pertama kali saat aplikasi dibuka
@@ -127,6 +145,12 @@ class _WebViewPageState extends State<WebViewPage> {
     controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
+      ..addJavaScriptChannel(
+        'VideoDetectorChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          _videoDetectorService.handleMessage(message.message);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -144,6 +168,7 @@ class _WebViewPageState extends State<WebViewPage> {
                 _errorMessage = null;
               });
             }
+            _videoDetectorService.clear();
           },
           onPageFinished: (String url) {
             if (mounted) {
@@ -152,6 +177,10 @@ class _WebViewPageState extends State<WebViewPage> {
               });
               // Injeksi JS untuk mencegah popup window.open dan target="_blank"
               _preventPopupsAndNewWindows(controller);
+              // Injeksi JS sniffer video & subtitle
+              controller
+                  .runJavaScript(VideoDetectorService.getInjectionScript())
+                  .catchError((_) {});
             }
           },
           onWebResourceError: (WebResourceError error) {
@@ -168,7 +197,11 @@ class _WebViewPageState extends State<WebViewPage> {
           },
           onNavigationRequest: (NavigationRequest request) {
             final allowedHost = _config?.allowedHost ?? '';
-            final eval = _navigationService.evaluateNavigation(request.url, allowedHost);
+            final eval = _navigationService.evaluateNavigation(
+              request.url,
+              allowedHost,
+              isMainFrame: request.isMainFrame,
+            );
 
             if (eval == NavigationResult.allowed) {
               return NavigationDecision.navigate;
@@ -277,6 +310,10 @@ class _WebViewPageState extends State<WebViewPage> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
+            CastButton(
+              videoDetectorService: _videoDetectorService,
+              castManager: _castManager,
+            ),
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: 'Reload',
@@ -296,6 +333,31 @@ class _WebViewPageState extends State<WebViewPage> {
               onPressed: _openSettingsDialog,
             ),
           ],
+        ),
+        bottomNavigationBar: CastControlBar(
+          castManager: _castManager,
+          videoDetectorService: _videoDetectorService,
+        ),
+        floatingActionButton: ValueListenableBuilder<List<DetectedVideo>>(
+          valueListenable: _videoDetectorService.detectedVideosNotifier,
+          builder: (context, videos, _) {
+            if (videos.isEmpty || _castManager.isCasting) {
+              return const SizedBox.shrink();
+            }
+            return FloatingActionButton.extended(
+              onPressed: () {
+                CastModalBottomSheet.show(
+                  context: context,
+                  videoDetectorService: _videoDetectorService,
+                  castManager: _castManager,
+                );
+              },
+              icon: const Icon(Icons.cast),
+              label: Text('Cast Video (${videos.length})'),
+              backgroundColor: Colors.blueAccent,
+              foregroundColor: Colors.white,
+            );
+          },
         ),
         body: Stack(
           children: [

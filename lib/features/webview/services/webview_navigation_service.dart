@@ -18,8 +18,12 @@ class WebViewNavigationService {
   /// Mengevaluasi request navigasi berdasarkan prioritas pemeriksaan (Bagian 15):
   /// 1. Skema harus HTTP atau HTTPS (blokir intent, whatsapp, mailto, tel, dll.)
   /// 2. Bukan domain iklan
-  /// 3. Harus sesuai allowed domain atau subdomainnya
-  NavigationResult evaluateNavigation(String url, String allowedHost) {
+  /// 3. Untuk top-level navigation: Harus sesuai allowed domain atau subdomainnya
+  NavigationResult evaluateNavigation(
+    String url,
+    String allowedHost, {
+    bool isMainFrame = true,
+  }) {
     // Prioritas 1: Periksa Skema
     if (!UrlUtils.isAllowedScheme(url)) {
       return NavigationResult.blockedInvalidScheme;
@@ -30,8 +34,8 @@ class WebViewNavigationService {
       return NavigationResult.blockedAdDomain;
     }
 
-    // Prioritas 3: Periksa Domain yang diizinkan (Allowlist)
-    if (!DomainUtils.isAllowedDomain(url, allowedHost)) {
+    // Prioritas 3: Periksa Domain yang diizinkan (Allowlist untuk top-level navigation)
+    if (isMainFrame && !DomainUtils.isAllowedDomain(url, allowedHost)) {
       return NavigationResult.blockedExternalDomain;
     }
 
@@ -39,7 +43,12 @@ class WebViewNavigationService {
   }
 
   /// Menghasilkan true jika request diizinkan untuk dinavigasikan
-  bool shouldAllowNavigation(String url, String allowedHost) {
-    return evaluateNavigation(url, allowedHost) == NavigationResult.allowed;
+  bool shouldAllowNavigation(
+    String url,
+    String allowedHost, {
+    bool isMainFrame = true,
+  }) {
+    return evaluateNavigation(url, allowedHost, isMainFrame: isMainFrame) ==
+        NavigationResult.allowed;
   }
 }
