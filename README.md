@@ -1,188 +1,196 @@
 # 🎬 IDLIX-App — Android TV, STB & Mobile Streaming Client
 
-[![GitHub Release](https://img.shields.io/github/v/release/Asadaaaaa/IDLIX-App?color=blue&label=Release)](https://github.com/Asadaaaaa/IDLIX-App/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/Asadaaaaa/IDLIX-App?color=red&label=Latest%20Release)](https://github.com/Asadaaaaa/IDLIX-App/releases)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20STB%20%7C%20Mobile-green)](https://github.com/Asadaaaaa/IDLIX-App)
-[![Flutter](https://img.shields.io/badge/Built%20with-Flutter%203-02569B)](https://flutter.dev)
+[![Built with Flutter](https://img.shields.io/badge/Built%20with-Flutter%203-02569B?logo=flutter)](https://flutter.dev)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Aplikasi browser streaming khusus **IDLIX** berbasis Flutter WebView berperforma tinggi, dirancang untuk berjalan optimal di **Android TV**, **Google TV**, **Android Box (STB)**, maupun **Smartphone & Tablet Android**.
+A high-performance streaming browser client built with Flutter, purpose-engineered for **IDLIX**. It runs seamlessly across **Android TV**, **Google TV**, **Android Box (STB)**, as well as **Smartphones & Tablets**.
 
-Aplikasi ini mengatasi masalah umum saat mengakses situs streaming:
-- **Bebas Iklan & Popup Ads Blocked:** Dilengkapi proteksi **Domain Lock** dan **Ad Blocking** untuk mencegah popup, tab baru jebakan, dan iklan berbahaya dengan notifikasi "Popup Ads Blocked".
-- **Splashscreen Sinematik ala Netflix:** Animasi pembuka logo IDLIX beraksen merah ribbon dengan efek pulsating radial glow dan zoom halus.
-- **In-App Update Otomatis:** Deteksi update aplikasi langsung dari GitHub Releases via `config.json` dan instalasi update langsung di dalam aplikasi (In-App Update).
-- **Tombol Cast Bulat & Draggable:** Floating action button cast berbentuk bulat yang dapat digeser bebas ke mana saja di layar HP & TV.
-- **Ramah Remote TV:** Menggunakan **Virtual Mouse (Kursor Layar D-Pad)** dengan akselerasi halus dan auto-scroll untuk kemudahan navigasi di TV tanpa mouse fisik.
-- **Domain IDLIX Selalu Terkini:** Menggunakan sistem **Dynamic URL dari GitHub Raw**, sehingga jika alamat website IDLIX berganti, URL diperbarui langsung dari file `config.json` di GitHub tanpa perlu update aplikasi.
-- **Deteksi Stream & Cast Video:** Menangkap stream video (HLS `.m3u8` / `.mp4`) beserta subtitle (Bahasa Indonesia & Inggris) dan dapat di-cast langsung ke **Smart TV / Chromecast / DLNA**.
+This app solves the key challenges of web-based streaming:
+- 🛡️ **Popup Ads Blocked & Domain Lock:** Blocks intrusive popups, trap redirect tabs, external schemes, and malicious ad networks while strictly locking browsing to legitimate IDLIX domains.
+- 🔴 **Netflix-Style Cinematic Splash Screen:** Features a custom cinematic opening animation with an IDLIX ribbon emblem, pulsating radial glow, and smooth zoom transition.
+- 🔄 **App Update Detection & In-App Updates:** Automatically detects newer releases from GitHub and executes instant direct APK updates inside the app.
+- 🎯 **Circular & Draggable Cast Button:** Floating action button that can be dragged anywhere on the screen without obstructing video controls or subtitles.
+- 🖱️ **Remote D-Pad Virtual Mouse:** Smoothly navigate desktop-style websites on TVs using the physical remote control's arrow buttons, accompanied by dynamic acceleration and border auto-scroll.
+- 🌐 **Dynamic Domain Sync via GitHub Raw:** Eliminates manual configuration. When IDLIX mirror URLs rotate, updating `config.json` on GitHub automatically syncs across all client apps without requiring app recompilation.
+- 📡 **Stream & Subtitle Sniffer with Smart TV Casting:** Intercepts HLS (`.m3u8`) and MP4 video streams alongside Indonesian & English subtitles (`.vtt`, `.srt`), enabling instant casting to **Chromecast / Google Cast** and **DLNA / UPnP Smart TVs**.
 
 ---
 
-## 📱 Download APK Release
+## 📱 Download APK Releases
 
-Tersedia dalam **2 APK terpisah** yang dioptimalkan secara spesifik untuk masing-masing perangkat:
+IDLIX-App is distributed as **two distinct, optimized APK builds** tailored for specific screen environments:
 
-| Perangkat | Nama Aplikasi | File APK | Keterangan |
+| Target Platform | App Name | APK Package | Key Highlights |
 |---|---|---|---|
-| 📱 **HP & Tablet Android** | **IDLIX** | [`IDLIX.apk`](./IDLIX.apk) | Layar penuh tanpa navbar, tombol cast bulat draggable, auto-detect cast video |
-| 📺 **Android TV & STB Box** | **IDLIX TV** | [`IDLIX-TV.apk`](./IDLIX-TV.apk) | Banner Leanback launcher TV, kursor D-Pad remote, auto-scroll, menu zoom TV |
+| 📱 **Smartphone & Tablet** | **IDLIX** | [`IDLIX.apk`](./IDLIX.apk) | Immersive fullscreen without navigation bars, responsive touch gestures, draggable floating cast button |
+| 📺 **Android TV & STB Box** | **IDLIX TV** | [`IDLIX-TV.apk`](./IDLIX-TV.apk) | 16:9 Leanback launcher banner, remote D-Pad virtual cursor, edge auto-scroll, TV zoom scale presets |
 
-- **Halaman Releases:** [IDLIX-App GitHub Releases](https://github.com/Asadaaaaa/IDLIX-App/releases/tag/v1.6.0)
-- **Persyaratan Sistem:** Android 5.0 (Lollipop) atau lebih baru (SDK 21+).
-- **Layar Penuh (Immersive):** Navbar atas & bawah telah dihilangkan sehingga tampilan web IDLIX memenuhi layar sepenuhnya.
+- **Releases Page:** [GitHub Releases v1.6.0](https://github.com/Asadaaaaa/IDLIX-App/releases/tag/v1.6.0)
+- **Direct Downloads:**
+  - 📥 [Download IDLIX.apk (Mobile/Tablet)](https://github.com/Asadaaaaa/IDLIX-App/releases/download/v1.6.0/IDLIX.apk)
+  - 📥 [Download IDLIX-TV.apk (Android TV/STB)](https://github.com/Asadaaaaa/IDLIX-App/releases/download/v1.6.0/IDLIX-TV.apk)
+- **Minimum Requirements:** Android 5.0 Lollipop or newer (API level 21+).
 
 ---
 
-## ✨ Fitur Utama IDLIX-App
+## ✨ Key Features
 
-### 1. 🌐 Auto Dynamic Domain via GitHub Raw (Tanpa Backend)
-- **Tanpa Input Manual:** Pengguna tidak perlu mengetikkan URL apa pun saat membuka aplikasi.
-- **Pembaruan Domain Terpusat:** URL dan *allowed host* dimuat langsung dari file [`config.json`](./config.json) pada repositori ini:
+### 1. 🎬 Netflix-Style Cinematic Splash Screen
+- **Cinematic Entrance:** Inspired by premium streaming services, the app opens with a vibrant IDLIX ribbon insignia, pulsating radial ambient glow, and dynamic typography spacing.
+- **Seamless Loading:** Maintains user engagement during cold starts while the WebView initializes and loads the portal in the background.
+- **Adaptive Dismissal:** Automatically fades out once the web portal is fully rendered.
+
+### 2. 🚀 Automated In-App Update Detection
+- **Zero-Friction Updates:** Checks `config.json` on GitHub raw upon startup.
+- **In-App Download:** Downloads update packages directly within the app, displaying live byte progress and percentage.
+- **Native Package Installer:** Utilizes Android `FileProvider` and native `Intent.ACTION_VIEW` via MethodChannel for one-click installation without third-party app stores or web browsers.
+
+### 3. 🌐 Dynamic Domain Synchronization (No Backend Required)
+- **Zero Setup for End-Users:** No URL input fields or manual setups.
+- **Centralized Management:** Domain targets and allowlists are fetched dynamically from [`config.json`](./config.json):
   ```
   https://raw.githubusercontent.com/Asadaaaaa/IDLIX-App/main/config.json
   ```
-- **Mudah Diganti di GitHub:** Jika domain IDLIX berganti (misalnya ke mirror baru), Anda cukup mengedit `config.json` di GitHub. Semua aplikasi pengguna akan otomatis sinkron ke domain baru saat dibuka.
-- **Offline Cache & CDN Backup:** Didukung cache penyimpanan lokal (`SharedPreferences`), mirror CDN jsDelivr, dan domain fallback bawaan.
-- **Tombol Update URL Instan:** Tersedia tombol *Sync* di App Bar dan di TV Quick Menu untuk mengecek domain terbaru secara instan.
+- **Fallback Redundancy:** Includes multi-tier fallbacks: local encrypted cache (`SharedPreferences`), jsDelivr CDN mirrors, and hardcoded default routes.
+- **Instant Mirror Updates:** If the streaming domain changes, simply edit `config.json` in this repository. All installations will instantly adapt upon next launch.
 
-### 2. 📺 Navigasi Remote D-Pad & Virtual Mouse (Android TV & STB)
-- **Kursor Layar Virtual Mouse:**
-  - Gerakkan kursor di layar TV menggunakan tombol panah D-Pad remote.
-  - Akselerasi dinamis: semakin lama tombol D-Pad ditekan, gerakan kursor bertambah cepat.
-  - Auto-scroll otomatis saat kursor mendekati batas atas atau batas bawah layar TV.
-  - Tombol **OK / Select / Enter** memicu klik virtual presisi pada link film, episode, dan pemutar video.
-- **TV Quick Menu (Tombol Menu / Context Menu):**
-  - **Toggle Kursor:** Mengaktifkan atau menyembunyikan kursor virtual.
-  - **TV Zoom Scale:** Skala tampilan web (100%, 125%, 150%) untuk kenyamanan membaca di TV layar besar dari jarak sofa.
-  - **Aksi Cepat:** Reload halaman, navigasi riwayat mundur (back), dan tombol **Update URL**.
-- **Native HTML5 Video Fullscreen:**
-  - Pemutar video web (JWPlayer/Video.js) langsung tampil fullscreen landscape di layar TV.
+### 4. 📺 Android TV & STB Remote D-Pad Navigation
+- **Virtual Mouse Cursor:**
+  - Control an on-screen cursor using physical remote D-Pad arrow keys.
+  - Dynamic acceleration curve: holding down an arrow key gradually speeds up cursor movement.
+  - Automated edge scrolling triggers when the cursor nears the top or bottom screen boundaries.
+  - Clicking the **OK / Select / Enter** button fires synthesized JavaScript mouse events to activate links, episode selectors, and web players.
+- **TV Quick Menu (Remote Menu Button):**
+  - Toggle virtual cursor visibility on/off.
+  - **TV Zoom Scaling:** Quick presets (100%, 125%, 150%) for clear readability from couch viewing distances.
+  - Instant navigation shortcuts: Reload, Back, Forward, and Check Updates.
+- **Native Fullscreen Video:** Native HTML5 fullscreen callbacks ensure third-party web video players scale to true 16:9 TV landscape mode.
 
-#### 🎮 Pemetaan Tombol Remote TV:
-| Tombol Remote | Fungsi di IDLIX-App |
+#### 🎮 Remote Control Button Mapping:
+| Remote Key | Action in IDLIX-App |
 |---|---|
-| **D-Pad (Panah Atas/Bawah/Kiri/Kanan)** | Menggerakkan kursor mouse di layar |
-| **OK / Center / Select** | Klik elemen website pada posisi kursor |
-| **Menu / Context Menu** | Membuka / menutup **TV Quick Menu** |
-| **Back / Return** | Navigasi halaman sebelumnya / menutup dialog menu |
-| **Media Play / Pause** | Toggle play / pause video yang sedang diputar |
-| **Page Up / Down (Channel +/-)** | Scroll cepat halaman web ke atas / ke bawah |
+| **D-Pad (Up / Down / Left / Right)** | Move virtual mouse cursor across the screen |
+| **OK / Center / Select** | Click on the element under cursor coordinates |
+| **Menu / Context Menu** | Open / close the **TV Quick Menu** |
+| **Back / Return** | Browser history back navigation / dismiss modal |
+| **Media Play / Pause** | Toggle video playback (web player or active cast session) |
+| **Page Up / Down (Channel +/-)** | Rapid page scrolling |
 
-### 3. 📡 Deteksi Video Otomatis & Casting ke Smart TV
-- **Deteksi Stream Video:**
-  - Mendeteksi elemen `<video>`, iframe pemutar (JWPlayer, Video.js, Plyr), dan request jaringan HLS (`.m3u8`) & MP4.
-- **Deteksi Subtitle Otomatis:**
-  - Mengambil track subtitle WebVTT (`.vtt`) dan SubRip (`.srt`), termasuk subtitle Bahasa Indonesia dan Inggris.
+### 5. 📡 Stream & Subtitle Sniffer with Smart TV Casting
+- **Stream Interception:** Detects HTML5 `<video>`, `<source>`, JWPlayer, Video.js, Plyr instances, and network XHR/Fetch requests for HLS (`.m3u8`) and MP4 video streams.
+- **Subtitle Interception:** Captures `<track>` subtitles, WebVTT (`.vtt`), and SubRip (`.srt`) tracks (Indonesian, English, etc.).
 - **Multi-Protocol Casting:**
-  - Mendukung **Google Cast / Chromecast** (Android TV, Google TV, Chromecast Dongle).
-  - Mendukung **DLNA / UPnP** (Samsung Tizen TV, LG webOS, Sony, Polytron, Roku, dsb.).
-- **Cast Control Bar:**
-  - Kontrol pemutaran di layar: Play, Pause, Seek bar, ganti subtitle aktif, dan pengaturan volume.
+  - **Google Cast / Chromecast** (Android TV, Google TV, Chromecast dongles).
+  - **DLNA / UPnP** (Samsung Tizen, LG webOS, Sony, Roku, etc.).
+- **On-Screen Cast Control Bar:** Play, Pause, Seek slider, Volume adjustment, and live Subtitle selection.
 
-### 4. 🛡️ Domain Lock & Ad Blocking
-- **Domain Lock (Allowlist):** Hanya mengizinkan navigasi pada domain IDLIX aktif beserta subdomainnya (mencegah redirect jebakan).
-- **Anti-Popup & Anti-Tab Baru:** Mencegah panggilan `window.open` dan mengubah `target="_blank"` menjadi frame utama.
-- **Ad Blocker Bawaan:** Memblokir jaringan iklan video, pop-under, dan banner iklan umum (DoubleClick, Taboola, Outbrain, PopAds, dll.).
+### 6. 🛡️ Domain Lock & "Popup Ads Blocked" Protection
+- **Strict Allowlist (Domain Lock):** Restricts navigation to the verified IDLIX domain and its authenticated subdomains.
+- **Popup & Tab Hijacking Blocker:** Neutralizes `window.open()` exploits and rewrites `target="_blank"` anchors to protect the main browsing session.
+- **Network Ad Blocker:** Filters out known ad networks, analytics trackers, pop-unders, and scam domains.
+- **Intuitive Feedback:** Blocked malicious redirect attempts trigger a clean **"Popup Ads Blocked"** shield notification.
 
 ---
 
-## 🛠️ Cara Mengganti URL IDLIX di Masa Depan
+## 🛠️ How to Update the IDLIX Domain in the Future
 
-Jika situs IDLIX berganti domain (misal dari `z2.idlixku.com` ke domain baru):
+Whenever IDLIX rotates its official mirror domain:
 
-1. Buka file [`config.json`](https://github.com/Asadaaaaa/IDLIX-App/blob/main/config.json) di repositori GitHub ini.
-2. Klik ikon pensil (**Edit this file**).
-3. Ubah nilainya, contoh:
+1. Open [`config.json`](https://github.com/Asadaaaaa/IDLIX-App/blob/main/config.json) in this repository.
+2. Click the pencil icon (**Edit this file**).
+3. Update the fields accordingly:
    ```json
    {
-     "url": "https://z3.idlixbaru.com",
-     "allowed_host": "idlixbaru.com",
+     "url": "https://new-mirror.idlixku.com",
+     "allowed_host": "idlixku.com",
      "name": "IDLIX",
-     "updated_at": "2026-09-12"
+     "updated_at": "2026-09-12",
+     "latest_version": "1.6.0",
+     "latest_version_code": 16,
+     "release_notes": "Domain updated to the latest mirror.",
+     "mobile_apk_url": "https://github.com/Asadaaaaa/IDLIX-App/releases/download/v1.6.0/IDLIX.apk",
+     "tv_apk_url": "https://github.com/Asadaaaaa/IDLIX-App/releases/download/v1.6.0/IDLIX-TV.apk"
    }
    ```
-4. Klik **Commit changes...**.
-5. **Selesai!** Aplikasi pengguna di TV maupun HP akan otomatis beralih ke domain baru tersebut tanpa perlu compile atau install ulang APK.
+4. Commit your changes to the `main` branch.
+5. **Done!** Every user device will automatically connect to the new domain upon launch.
 
 ---
 
-## 📁 Struktur Project
+## 📁 Repository Structure
 
 ```
-config.json                          <-- Konfigurasi remote JSON URL IDLIX
-lib/
-├── main.dart                        <-- Titik masuk aplikasi
-├── app/
-│   └── app.dart                     <-- Konfigurasi root MaterialApp
-├── features/
-│   ├── cast/                        <-- Fitur Video Detector & Casting
-│   │   ├── models/
-│   │   │   ├── detected_video.dart
-│   │   │   └── detected_subtitle.dart
+.
+├── config.json                          # Central dynamic configuration & update metadata
+├── IDLIX.apk                            # Prebuilt release APK for Mobile / Tablet
+├── IDLIX-TV.apk                         # Prebuilt release APK for Android TV / STB
+├── android/                             # Native Android configuration & Leanback setup
+│   └── app/src/main/
+│       ├── AndroidManifest.xml          # Permissions, FileProvider, Leanback banner
+│       ├── res/xml/file_paths.xml       # FileProvider path mapping for APK installation
+│       └── kotlin/.../MainActivity.kt   # Native MethodChannel for In-App APK installation
+├── lib/
+│   ├── main.dart                        # Default entry point
+│   ├── main_mobile.dart                 # Mobile flavor entry point (IDLIX)
+│   ├── main_tv.dart                     # Android TV flavor entry point (IDLIX TV)
+│   ├── app/
+│   │   └── app.dart                     # MaterialApp root configuration
+│   ├── core/                            # Shared utilities, domain locking, remote config
 │   │   ├── services/
-│   │   │   ├── cast_manager.dart
-│   │   │   └── video_detector_service.dart
-│   │   └── presentation/
-│   │       └── widgets/
-│   │           ├── cast_button.dart
-│   │           ├── cast_control_bar.dart
-│   │           └── cast_modal_bottom_sheet.dart
-│   ├── tv/                          <-- Fitur Android TV & Remote D-Pad
-│   │   ├── services/
-│   │   │   └── tv_remote_controller.dart
-│   │   └── presentation/
-│   │       └── widgets/
-│   │           ├── tv_virtual_cursor.dart
-│   │           └── tv_quick_menu.dart
-│   └── webview/                     <-- Fitur WebView & Proteksi Keamanan
-│       ├── presentation/
-│       │   ├── pages/
-│       │   │   └── webview_page.dart
-│       │   └── widgets/
-│       │       └── loading_overlay.dart
-│       ├── services/
-│       │   ├── webview_navigation_service.dart
-│       │   └── webview_adblock_service.dart
-│       └── models/
-│           └── webview_config.dart
-├── core/
-│   ├── constants/
-│   │   └── ad_blocklist.dart        <-- Daftar filter domain iklan
-│   ├── services/
-│   │   ├── remote_config_service.dart <-- Pengambil config JSON dari GitHub
-│   │   └── storage_service.dart     <-- Penyimpanan cache SharedPreferences
-│   └── utils/
-│       ├── url_utils.dart
-│       └── domain_utils.dart
+│   │   │   ├── remote_config_service.dart
+│   │   │   └── storage_service.dart
+│   │   └── utils/
+│   │       ├── domain_utils.dart
+│   │       └── url_utils.dart
+│   └── features/
+│       ├── cast/                        # Video stream & subtitle sniffer, casting engine
+│       │   ├── models/
+│       │   ├── services/
+│       │   └── presentation/widgets/
+│       ├── tv/                          # Android TV remote controller & virtual mouse cursor
+│       │   ├── services/
+│       │   └── presentation/widgets/
+│       ├── update/                      # In-app update detection, downloader & dialog
+│       │   ├── models/
+│       │   ├── services/
+│       │   └── presentation/widgets/
+│       └── webview/                     # WebView core, navigation delegate & splash screen
+│           └── presentation/widgets/
+│               └── idlix_splash_screen.dart # Netflix-style cinematic splashscreen
+└── test/                                # Automated unit test suites
 ```
 
 ---
 
-## 🚀 Panduan Kompilasi (Build dari Source)
+## 💻 Building From Source
 
-### Prasyarat:
-- Flutter SDK (3.x)
-- Android SDK (Platform 34 / 36)
-- Java OpenJDK 17+
+### Prerequisites
+- Flutter SDK 3.13+
+- Android SDK with Platform Tools (API 21+)
+- JDK 17
 
-### 1. Unduh Dependencies:
+### Build Commands
 ```bash
+# Clone the repository
+git clone https://github.com/Asadaaaaa/IDLIX-App.git
+cd IDLIX-App
+
+# Install Flutter dependencies
 flutter pub get
-```
 
-### 2. Jalankan Pengujian (Unit Tests):
-```bash
+# Run automated tests
 flutter test
+
+# Build Mobile Release APK (IDLIX.apk)
+flutter build apk --release --flavor mobile -t lib/main_mobile.dart
+
+# Build Android TV Release APK (IDLIX-TV.apk)
+flutter build apk --release --flavor tv -t lib/main_tv.dart
 ```
 
-### 3. Build APK Release:
-- **Build APK HP / Mobile (`IDLIX`):**
-  ```bash
-  flutter build apk --release --flavor mobile -t lib/main_mobile.dart
-  ```
-  File output: `build/app/outputs/flutter-apk/app-mobile-release.apk` (`IDLIX.apk`).
+---
 
-- **Build APK Android TV / STB (`IDLIX TV`):**
-  ```bash
-  flutter build apk --release --flavor tv -t lib/main_tv.dart
-  ```
-  File output: `build/app/outputs/flutter-apk/app-tv-release.apk` (`IDLIX-TV.apk`).
+## 📄 License
+This project is open-source under the [MIT License](LICENSE).

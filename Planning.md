@@ -1,860 +1,240 @@
-Flutter WebView App dengan Domain Lock dan Ad Blocking
+# IDLIX-App: Architecture, Technical Specification & Project Plan
 
-1. Tujuan Aplikasi
+## 1. Project Vision & Executive Summary
 
-Buat aplikasi Flutter berupa browser sederhana berbasis WebView.
+**IDLIX-App** is a dedicated, high-performance streaming client built with Flutter and engineered specifically for the **IDLIX** streaming platform. It delivers an ad-free, secure, and native-feeling experience across two distinct hardware environments:
+1. **Android TV & Android Box (STB):** A 10-foot user experience designed for living room televisions, powered by a virtual mouse cursor navigated via physical remote D-Pad controls, custom TV zoom presets, and an automated Leanback launcher integration.
+2. **Android Smartphones & Tablets:** A sleek, touch-first, immersive interface devoid of redundant navigation bars, equipped with a circular draggable cast button.
 
-Aplikasi hanya digunakan untuk membuka satu URL website utama yang ditentukan oleh user saat aplikasi pertama kali dibuka.
-
-Aplikasi harus membatasi WebView agar:
-
-- Tidak membuka website lain di luar domain URL utama.
-- Tidak mengikuti redirect ke domain lain.
-- Tidak membuka aplikasi eksternal.
-- Tidak membuka browser eksternal.
-- Memblokir popup atau window baru.
-- Memblokir iklan dan resource dari domain iklan yang diketahui.
-- Menggunakan sistem allowlist untuk domain yang diperbolehkan.
+The application eliminates the friction of traditional web streaming on Android:
+- **No Manual Configuration:** The active IDLIX domain is fetched dynamically from GitHub raw JSON (`config.json`), ensuring zero-friction setup and instant domain rotation.
+- **Aggressive Ad & Popup Neutralization:** Eliminates malicious popunders, trap tabs, and phishing redirects with real-time **"Popup Ads Blocked"** shield feedback.
+- **Cinematic Experience:** Features a Netflix-inspired ribbon splash screen during cold starts.
+- **Direct In-App Updates:** Seamlessly checks for newer releases from GitHub Releases and conducts direct in-app downloading and native package installation.
+- **Smart TV Casting:** Automatically captures video streams (HLS `.m3u8`, MP4) and subtitles (Indonesian & English `.vtt`/`.srt`) for direct playback on Google Cast / Chromecast and DLNA / UPnP devices.
 
 ---
 
-2. Tech Stack
+## 2. Technology Stack & Dependencies
 
-Gunakan:
-
-- Flutter
-- Dart
-- WebView Flutter yang mendukung kontrol navigation dan request interception sesuai kebutuhan
-- Local storage untuk menyimpan URL utama
-- Android sebagai target utama
-
-Gunakan struktur kode yang rapi dan mudah dikembangkan.
+- **Framework:** Flutter 3 (Dart 3.x)
+- **Target Platform:** Android (API Level 21+ / Android 5.0 Lollipop through Android 14+)
+- **Core Modules:**
+  - `webview_flutter` & `webview_flutter_android`: High-performance WebKit/Chromium web engine with hardware acceleration.
+  - `dart_cast`: Multi-protocol casting supporting Google Cast and DLNA / UPnP Smart TVs.
+  - `shared_preferences`: Encrypted local persistence for cached remote configs and application state.
+  - Native Kotlin MethodChannel (`com.idlix.app/installer`): Android `FileProvider` and native `ACTION_VIEW` intent dispatch for in-app APK installations.
 
 ---
 
-3. Application Flow
+## 3. High-Level System Architecture
 
-Saat Aplikasi Dibuka
-
-APP START
-    ↓
-Cek apakah URL sudah tersimpan
-    ↓
-Apakah URL tersedia?
-    │
-    ├── TIDAK
-    │     ↓
-    │  Tampilkan Modal Input URL
-    │     ↓
-    │  User memasukkan URL
-    │     ↓
-    │  Validasi URL
-    │     ↓
-    │  Simpan URL secara lokal
-    │     ↓
-    │  Extract hostname/domain
-    │     ↓
-    │  Buka URL di WebView
-    │
-    └── YA
-          ↓
-    Load URL yang tersimpan
-          ↓
-    Extract hostname/domain
-          ↓
-    Buka WebView
-
----
-
-4. URL Input Modal
-
-Saat belum terdapat URL yang tersimpan, tampilkan modal atau dialog.
-
-Komponen:
-
-- Text input untuk URL.
-- Tombol "Open".
-- Validasi URL sebelum disimpan.
-
-Contoh:
-
-┌─────────────────────────────┐
-│         Open Website        │
-│                             │
-│  Enter website URL          │
-│                             │
-│  [ https://example.com    ] │
-│                             │
-│             [ Open ]        │
-└─────────────────────────────┘
-
-URL harus valid.
-
-Contoh URL valid:
-
-https://example.com
-http://example.com
-https://www.example.com
-
-Jika user memasukkan URL tanpa protocol, normalisasi dengan menambahkan:
-
-https://
-
-Contoh:
-
-example.com
-
-Menjadi:
-
-https://example.com
-
-Setelah URL valid:
-
-1. Simpan URL utama ke local storage.
-2. Extract hostname dari URL.
-3. Gunakan hostname sebagai allowed domain.
-4. Load URL ke WebView.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                               IDLIX-App                                │
+├──────────────────────────────────┬─────────────────────────────────────┤
+│      Mobile Flavor (IDLIX)       │      TV Flavor (IDLIX TV)           │
+│  - Fullscreen Touch UI           │  - Leanback TV Launcher & Banner    │
+│  - Draggable Circular Cast FAB   │  - Remote D-Pad Virtual Cursor      │
+│  - Auto-Detect Video Streams     │  - TV Quick Menu & Couch Zoom (125%)│
+└──────────────────────────────────┴─────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                             Core Layer                                 │
+├──────────────────────────┬─────────────────────────┬───────────────────┤
+│  RemoteConfigService     │  WebViewNavigation      │  AppUpdateService │
+│  - GitHub Raw config.json│  - Domain Allowlist     │  - Version Check  │
+│  - jsDelivr CDN fallback │  - Ad & Popup Blocking  │  - Direct In-App  │
+│  - SharedPreferences     │  - "Popup Ads Blocked"  │    APK Download   │
+└──────────────────────────┴─────────────────────────┴───────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Presentation & Features                         │
+├──────────────────────────┬─────────────────────────┬───────────────────┤
+│    IdlixSplashScreen     │  VideoDetectorService   │    CastManager    │
+│  - Netflix ribbon glow   │  - HLS / MP4 Sniffer    │  - Google Cast    │
+│  - Radial pulsating bloom│  - VTT / SRT Subtitles  │  - DLNA / UPnP    │
+│  - Smooth zoom & fade    │  - Player iframe bridge │  - Full Controls  │
+└──────────────────────────┴─────────────────────────┴───────────────────┘
+```
 
 ---
 
-5. Local Storage
+## 4. Application Flow & Lifecycle
 
-Simpan minimal data berikut:
-
-mainUrl
-allowedHost
-
-Contoh:
-
-mainUrl:
-https://example.com
-
-allowedHost:
-example.com
-
-Saat aplikasi dibuka kembali, gunakan data tersebut secara otomatis tanpa meminta input ulang.
-
----
-
-6. Domain Allowlist
-
-Aplikasi harus menggunakan pendekatan allowlist, bukan hanya blacklist.
-
-Misalnya URL utama:
-
-https://example.com
-
-Hostname:
-
-example.com
-
-Maka URL yang diperbolehkan:
-
-https://example.com
-https://example.com/article
-https://example.com/login
-https://www.example.com
-https://api.example.com
-
-Subdomain dapat diizinkan.
-
-Aturan validasi domain:
-
-uri.host == allowedHost
-
-atau:
-
-uri.host.endsWith('.$allowedHost')
-
-Dengan demikian:
-
-example.com
-www.example.com
-api.example.com
-cdn.example.com
-
-dapat diakses.
-
-Tetapi domain berikut harus diblok:
-
-google.com
-youtube.com
-facebook.com
-doubleclick.net
-ads.example.com
-example-other.com
-example.com.evilsite.com
-
-Penting: jangan menggunakan pengecekan sederhana seperti:
-
-url.contains("example.com")
-
-karena dapat menyebabkan bypass seperti:
-
-example.com.evilsite.com
-
-Gunakan parsing hostname melalui "Uri".
-
----
-
-7. Navigation Blocking
-
-Setiap request navigasi harus diperiksa sebelum WebView membuka URL.
-
-Flow:
-
-USER / WEBSITE REQUESTS URL
-            ↓
-       Parse URI
-            ↓
-      Check Scheme
-            ↓
-      HTTP / HTTPS?
-       │         │
-      NO        YES
-       ↓         ↓
-    BLOCK    Check Host
-                  ↓
-           Allowed Domain?
-              │        │
-             NO       YES
-              ↓        ↓
-            BLOCK    ALLOW
-
-Contoh:
-
-URL| Result
-"https://example.com"| Allow
-"https://example.com/news"| Allow
-"https://api.example.com/data"| Allow
-"https://google.com"| Block
-"https://ads.google.com"| Block
-"https://youtube.com"| Block
-"https://evil.com"| Block
-
----
-
-8. Redirect Blocking
-
-Redirect dari website utama juga harus diperiksa.
-
-Contoh:
-
-https://example.com
-        ↓
-redirect
-        ↓
-https://ads-network.com/click
-
-Karena:
-
-ads-network.com
-
-bukan allowed domain, maka redirect harus dibatalkan.
-
-Result:
-
-BLOCK
-
-Redirect hanya boleh dilakukan jika destination URL masih berada dalam domain:
-
-example.com
-
-atau subdomainnya yang diperbolehkan.
-
-Contoh:
-
-https://example.com/login
-        ↓
-https://example.com/dashboard
-
-Result:
-
-ALLOW
-
----
-
-9. Block External Application
-
-Aplikasi tidak boleh membuka aplikasi lain.
-
-Gunakan pendekatan:
-
-«Hanya scheme "http" dan "https" yang diperbolehkan.»
-
-Semua scheme lainnya harus diblok.
-
-Contoh scheme yang harus diblok:
-
-intent://
-market://
-whatsapp://
-tg://
-spotify://
-mailto:
-tel:
-sms:
-geo:
-
-Contoh:
-
-whatsapp://send?phone=123
-
-Result:
-
-BLOCK
-
-Contoh:
-
-intent://scan/#Intent;scheme=zxing;package=...
-
-Result:
-
-BLOCK
-
-Contoh logic:
-
-if (uri.scheme != 'http' && uri.scheme != 'https') {
-  block();
-}
-
-Jangan meneruskan URL tersebut ke aplikasi eksternal.
-
-Jangan menggunakan:
-
-url_launcher
-
-untuk membuka URL eksternal.
-
----
-
-10. External Browser Blocking
-
-Semua link harus tetap diproses di dalam aplikasi.
-
-Jika URL bukan bagian dari allowed domain:
-
-BLOCK
-
-Jangan:
-
-- Membuka Chrome.
-- Membuka browser default.
-- Membuka Custom Tabs.
-- Membuka aplikasi eksternal.
-
-Contoh:
-
-User klik:
-https://google.com
-
-Result:
-
-Tidak membuka Chrome
-Tidak membuka browser
-Tidak membuka Google
-Tetap berada di aplikasi
-
----
-
-11. Popup dan New Window Blocking
-
-Website dapat mencoba membuka popup melalui:
-
-window.open()
-
-atau target:
-
-_blank
-
-Semua new window atau popup yang tidak memenuhi aturan domain harus diblok.
-
-Secara default, aplikasi harus mencegah pembukaan window baru yang dapat membuka:
-
-- Website iklan.
-- Popunder.
-- Popup.
-- Browser eksternal.
-- Aplikasi eksternal.
-
-Jika implementasi WebView menyediakan callback untuk create window atau popup, intercept callback tersebut dan lakukan validasi domain.
-
-Jika URL popup tidak termasuk allowed domain:
-
-BLOCK
-
-Jangan membuat WebView baru secara otomatis.
-
----
-
-12. Ad Blocking
-
-Aplikasi harus memiliki layer ad blocking tambahan.
-
-Navigation blocking saja tidak cukup.
-
-Contoh halaman:
-
-https://example.com/article
-
-Halaman tersebut dapat memuat resource:
-
-https://doubleclick.net/ad.js
-https://googlesyndication.com/banner
-https://ads-network.com/script.js
-
-Walaupun halaman utama masih berada di:
-
-example.com
-
-resource tersebut tetap merupakan request eksternal.
-
-Jika WebView package yang digunakan mendukung request interception, request harus diperiksa.
-
----
-
-13. Ad Domain Blocklist
-
-Buat file atau konfigurasi khusus untuk daftar domain iklan.
-
-Contoh:
-
-doubleclick.net
-googlesyndication.com
-googleadservices.com
-adservice.google.com
-adsystem.com
-taboola.com
-outbrain.com
-
-Struktur harus mudah ditambahkan.
-
-Contoh konsep:
-
-ad_blocklist.dart
-
-Berisi daftar domain:
-
-final Set<String> adBlockedDomains = {
-  'doubleclick.net',
-  'googlesyndication.com',
-  'googleadservices.com',
-  'adservice.google.com',
-  'adsystem.com',
-  'taboola.com',
-  'outbrain.com',
-};
-
-Pengecekan domain harus mendukung subdomain.
-
-Contoh:
-
-securepubads.g.doubleclick.net
-
-harus dianggap termasuk:
-
-doubleclick.net
-
----
-
-14. Request Filtering
-
-Setiap request resource harus melalui aturan berikut:
-
-REQUEST
-   ↓
-Check URL Scheme
-   ↓
-HTTP/HTTPS?
-   │
-   ├── NO → BLOCK
-   │
-   └── YES
-          ↓
-    Check Ad Blocklist
-          │
-          ├── MATCH → BLOCK
-          │
-          └── NO
-                 ↓
-         Continue Request
-
-Contoh:
-
-https://example.com/main.js
-
-Result:
-
-ALLOW
-
-Contoh:
-
-https://securepubads.g.doubleclick.net/tag/js/gpt.js
-
-Result:
-
-BLOCK
-
----
-
-15. Blocking Prioritas
-
-Gunakan urutan pemeriksaan berikut.
-
-Priority 1 — Block Invalid / External Scheme
-
-intent://
-market://
-whatsapp://
-mailto:
-tel:
-sms:
-geo:
-spotify://
-
-Result:
-
-BLOCK
-
-Priority 2 — Block Ad Domains
-
-Jika request menuju domain yang terdapat dalam ad blocklist:
-
-BLOCK
-
-Priority 3 — Navigation Domain Check
-
-Untuk top-level navigation:
-
-Allowed domain → ALLOW
-Other domain → BLOCK
-
----
-
-16. Back Navigation
-
-Tombol back Android harus memiliki behavior berikut:
-
-Ada WebView history?
+```
+[Application Startup]
         │
-       YES
-        ↓
-WebView Go Back
+        ├──► Render [IdlixSplashScreen] (Netflix-style ribbon animation & radial glow)
         │
-       NO
-        ↓
-Close App / Default Back Behavior
-
-Jika WebView sebelumnya memiliki URL dari allowed domain, user dapat kembali seperti browser biasa.
-
-Namun tetap jangan pernah membuka URL eksternal yang sebelumnya diblok.
-
----
-
-17. Loading State
-
-Saat website sedang dimuat, tampilkan loading indicator.
-
-Contoh:
-
-┌─────────────────────────────┐
-│                             │
-│                             │
-│          Loading...         │
-│            ⟳                │
-│                             │
-│                             │
-└─────────────────────────────┘
-
-Loading harus hilang setelah halaman selesai dimuat.
-
-Jika terjadi error, tampilkan error state sederhana.
+        ├──► Query [RemoteConfigService] (Fetch GitHub raw config.json / local cache)
+        │         │
+        │         ├── Success: Configure WebViewController with active IDLIX domain
+        │         └── Failure: Fallback to cached or hardcoded fallback mirror
+        │
+        ├──► Trigger [AppUpdateService.checkForUpdate()]
+        │         │
+        │         ├── Newer Version Found: Present [AppUpdateDialog] (In-App Update)
+        │         └── Up to Date: Silent continuation
+        │
+        ├──► Load Web Page in WebView
+        │         │
+        │         ├── Intercept Navigation: Block external schemes & ad domains
+        │         ├── Neutralize Popups: Block window.open & redirect target=_blank
+        │         ├── Inject Stream Sniffer: VideoDetectorService JS bridge
+        │         └── On Finished: Trigger splash screen fade-out transition
+        │
+        └──► User Interaction Mode
+                  │
+                  ├── Mobile: Direct touch gestures + Draggable Cast FAB
+                  └── TV: Remote D-Pad Virtual Mouse + TV Quick Menu
+```
 
 ---
 
-18. Error Handling
+## 5. Detailed Feature Specifications
 
-Tangani kondisi berikut:
+### 5.1. Dynamic Domain Resolution (No Backend)
+- **Objective:** Eliminate hardcoded domains and manual URL entry. When IDLIX changes mirror domains, modifying `config.json` in the GitHub repository dynamically re-routes all user installations.
+- **Endpoints:**
+  1. Primary: `https://raw.githubusercontent.com/Asadaaaaa/IDLIX-App/main/config.json`
+  2. CDN Mirror: `https://cdn.jsdelivr.net/gh/Asadaaaaa/IDLIX-App@main/config.json`
+  3. Local Cache: Persistent `SharedPreferences`
+- **Schema:**
+  ```json
+  {
+    "url": "https://z2.idlixku.com",
+    "allowed_host": "idlixku.com",
+    "name": "IDLIX",
+    "updated_at": "2026-09-12",
+    "latest_version": "1.6.0",
+    "latest_version_code": 16,
+    "release_notes": "...",
+    "mobile_apk_url": "https://github.com/Asadaaaaa/IDLIX-App/releases/download/v1.6.0/IDLIX.apk",
+    "tv_apk_url": "https://github.com/Asadaaaaa/IDLIX-App/releases/download/v1.6.0/IDLIX-TV.apk"
+  }
+  ```
 
-URL Tidak Valid
+### 5.2. Netflix-Style Cinematic Splash Screen
+- **Class:** `IdlixSplashScreen`
+- **Visual Design:**
+  - Dark background (`#0A0D14` to deep black gradient).
+  - Netflix-inspired IDLIX emblem with a red ribbon styled through custom clipping and multiple paint layers.
+  - Pulsating radial glow with additive blending.
+  - Coordinated animation choreography:
+    - Scale: $0.70 \rightarrow 1.06 \rightarrow 1.00$ (`Curves.easeInOut`).
+    - Letter-spacing: $2.0 \rightarrow 6.0$ units.
+    - Radial bloom opacity: $0.2 \rightarrow 1.0 \rightarrow 0.6$.
+- **Dismissal Logic:** Holds for a minimum of 1800ms for cinematic presentation. If the web page finishes loading before 1800ms, it waits for animation completion before fading out. If the web page takes longer, a sleek progress indicator reflects active download percentage until `onPageFinished`.
 
-Please enter a valid URL.
+### 5.3. In-App Update Engine
+- **Classes:** `AppUpdateService`, `AppUpdateDialog`, `MainActivity.kt`
+- **Workflow:**
+  1. `AppUpdateService.checkForUpdate()` compares `latest_version_code` vs installed build version.
+  2. If an update exists, `AppUpdateDialog` presents release notes and a **"Update Now"** action.
+  3. Clicking "Update Now" downloads the APK directly from GitHub Releases:
+     - Handles HTTP 301/302 redirects (e.g. GitHub to AWS S3 CDN).
+     - Emits continuous byte-level progress to update the linear progress bar in real time.
+     - Saves the payload into the app's secure cache directory (`idlix_update.apk`).
+  4. Once downloaded, `MainActivity.kt` executes the native installation intent:
+     - Generates a content URI via `androidx.core.content.FileProvider`.
+     - Grants `FLAG_GRANT_READ_URI_PERMISSION`.
+     - Fires `Intent(Intent.ACTION_VIEW)` with MIME type `application/vnd.android.package-archive`.
 
-Website Tidak Dapat Dimuat
+### 5.4. Android TV & STB Remote D-Pad Navigation
+- **Classes:** `TvRemoteController`, `TvVirtualCursor`, `TvQuickMenu`
+- **Hardware Profile:**
+  - Declares `android.software.leanback` (optional) and `android.hardware.touchscreen` as false.
+  - Integrates 16:9 Leanback banner for the Android TV launcher.
+- **D-Pad Virtual Cursor:**
+  - Simulates an on-screen mouse pointer moved by remote directional keys (`KEYCODE_DPAD_UP`, `DOWN`, `LEFT`, `RIGHT`).
+  - Dynamic acceleration curve: holding down keys progressively increases cursor velocity while maintaining sub-pixel precision for brief taps.
+  - Automated edge scrolling triggers whenever the cursor enters top/bottom boundary zones.
+  - Center/OK button invokes coordinate-based synthetic mouse events (`mousemove`, `mousedown`, `mouseup`, `click`) in the DOM.
+- **TV Quick Menu:**
+  - Activated by remote `KEYCODE_MENU` or context buttons.
+  - Provides quick zoom presets (100%, 125%, 150%) for viewing from distance.
+  - Reload, history navigation, and domain synchronization actions.
 
-Tampilkan:
+### 5.5. Video Stream & Subtitle Sniffer with Smart TV Casting
+- **Classes:** `VideoDetectorService`, `CastManager`, `DraggableCastButton`, `CastControlBar`
+- **JavaScript Injection Sniffer:**
+  - Monitors HTML5 `<video>`, `<source>`, and third-party web player wrappers (JWPlayer, Video.js, Plyr).
+  - Intercepts `XMLHttpRequest.prototype.open` and `window.fetch` to detect `.m3u8` and `.mp4` URLs.
+  - Intercepts `<track>` elements and WebVTT/SRT network payloads for Indonesian and English subtitles.
+- **Casting Protocol Support:**
+  - **Google Cast:** Google Cast V2 channel support for Chromecast dongles, Android TV, and Google TV.
+  - **DLNA / UPnP:** M-SEARCH SSDP discovery and SOAP AVTransport control for Samsung Tizen, LG webOS, Sony, and Roku TVs.
+- **Playback Control Bar:**
+  - Full transport control: Play, Pause, Seek slider, Volume adjustment, and live subtitle track selection.
 
-Unable to load website.
-
-Sediakan tombol:
-
-Retry
-
-Navigation Blocked
-
-Jika user atau website mencoba membuka domain lain, jangan crash.
-
-Cukup:
-
-Cancel navigation.
-
-Tidak perlu membuka browser eksternal.
-
----
-
-19. URL Settings
-
-Sediakan menu sederhana untuk mengganti URL utama.
-
-Contoh:
-
-Settings
-    ↓
-Current URL:
-https://example.com
-
-[ Change URL ]
-
-Saat URL diganti:
-
-1. Validasi URL baru.
-2. Update local storage.
-3. Update "mainUrl".
-4. Extract "allowedHost" baru.
-5. Clear WebView state jika diperlukan.
-6. Reload menggunakan URL baru.
-
----
-
-20. Struktur Project
-
-Gunakan struktur sederhana seperti berikut:
-
-lib/
-├── main.dart
-│
-├── app/
-│   └── app.dart
-│
-├── features/
-│   └── webview/
-│       ├── presentation/
-│       │   ├── pages/
-│       │   │   └── webview_page.dart
-│       │   │
-│       │   └── widgets/
-│       │       ├── url_input_dialog.dart
-│       │       └── loading_overlay.dart
-│       │
-│       ├── services/
-│       │   ├── webview_navigation_service.dart
-│       │   └── webview_adblock_service.dart
-│       │
-│       └── models/
-│           └── webview_config.dart
-│
-├── core/
-│   ├── constants/
-│   │   └── ad_blocklist.dart
-│   │
-│   ├── services/
-│   │   └── storage_service.dart
-│   │
-│   └── utils/
-│       ├── url_utils.dart
-│       └── domain_utils.dart
-
-Jangan membuat arsitektur terlalu kompleks karena aplikasi ini sederhana.
+### 5.6. Domain Lock & Popup Defense
+- **Class:** `WebViewNavigationService`
+- **Priority 1 (Schemes):** Blocks external schemes (`intent://`, `market://`, `whatsapp://`, etc.) from opening external applications.
+- **Priority 2 (Ad Domains):** Filters known malicious ad and popunder domains (`*.doubleclick.net`, `*.popads.net`, `*.adsterra.com`, etc.).
+- **Priority 3 (Domain Allowlist):** Enforces strict suffix domain checking to prevent subdomain bypass vulnerabilities (e.g. `idlixku.com.evil.com` is strictly rejected).
+- **Popup Neutralization:** JavaScript overrides `window.open` and replaces `target="_blank"` attributes with `target="_self"`. Blocked attempts display an intuitive **"Popup Ads Blocked"** shield alert.
 
 ---
 
-21. Domain Utility
+## 6. Project Directory Layout
 
-Buat utility untuk:
-
-- Normalize URL.
-- Validate URL.
-- Extract hostname.
-- Check allowed domain.
-- Check subdomain.
-- Check blocked ad domain.
-
-Contoh fungsi:
-
-normalizeUrl()
-isValidUrl()
-extractHost()
-isAllowedDomain()
-isBlockedAdDomain()
-
-Pengecekan domain harus aman.
-
-Contoh:
-
-Allowed host:
-
-example.com
-
-URL:
-
-https://example.com.evil.com
-
-Harus menghasilkan:
-
-false
-
-URL:
-
-https://sub.example.com
-
-Harus menghasilkan:
-
-true
+```
+.
+├── config.json                          # Central dynamic configuration & update schema
+├── IDLIX.apk                            # Precompiled Mobile/Tablet release APK
+├── IDLIX-TV.apk                         # Precompiled Android TV/STB release APK
+├── android/                             # Android native layer
+│   └── app/src/main/
+│       ├── AndroidManifest.xml          # TV Leanback, FileProvider, Permissions
+│       ├── res/xml/file_paths.xml       # Cache path mapping for APK installation
+│       └── kotlin/.../MainActivity.kt   # Native installer MethodChannel
+├── lib/
+│   ├── main_mobile.dart                 # Entry point: Mobile flavor (IDLIX)
+│   ├── main_tv.dart                     # Entry point: Android TV flavor (IDLIX TV)
+│   ├── app/app.dart                     # Root MaterialApp widget
+│   ├── core/
+│   │   ├── services/
+│   │   │   ├── remote_config_service.dart
+│   │   │   └── storage_service.dart
+│   │   └── utils/
+│   │       ├── domain_utils.dart
+│   │       └── url_utils.dart
+│   └── features/
+│       ├── cast/                        # Video stream & subtitle sniffer, casting
+│       ├── tv/                          # Android TV remote controller & virtual mouse
+│       ├── update/                      # In-app update detection, downloader, modal
+│       └── webview/                     # WebView core & Netflix-style splash screen
+└── test/                                # Automated unit test suites
+```
 
 ---
 
-22. WebView Rules Summary
+## 7. Quality Assurance & Test Verification
 
-Gunakan aturan berikut:
-
-┌──────────────────────────────────────────┐
-│              WEBVIEW REQUEST             │
-└─────────────────────┬────────────────────┘
-                      ↓
-             Parse URL safely
-                      ↓
-          ┌─────────────────────┐
-          │ HTTP / HTTPS only?  │
-          └───────┬───────┬─────┘
-                 NO       YES
-                  ↓         ↓
-                BLOCK   Is Ad Domain?
-                           │
-                    YES ───┤─── NO
-                    ↓             ↓
-                  BLOCK    Is Navigation?
-                                 │
-                                 ↓
-                        Allowed Domain?
-                           │         │
-                         NO          YES
-                          ↓            ↓
-                        BLOCK        ALLOW
+All critical modules are backed by automated tests:
+1. `test/domain_utils_test.dart`: Validates domain allowlist matching, evil-domain bypass prevention, scheme blocking, and navigation priorities.
+2. `test/remote_config_service_test.dart`: Validates local fallback caching, CDN endpoints, and JSON deserialization.
+3. `test/video_detector_test.dart`: Tests HLS/MP4 regex sniffer, WebVTT/SRT subtitle matching, deduplication, and iframe player embed allowances.
+4. `test/tv_remote_test.dart`: Tests cursor boundary clamping, acceleration rates, zoom scale updates, and remote key handling.
+5. `test/app_update_test.dart`: Tests update schema deserialization, version comparison logic, and fallback URLs.
 
 ---
 
-23. Security Requirements
+## 8. Build & Release Deployment
 
-Wajib:
+Build artifacts are separated into two distinct application flavors:
 
-- Jangan membuka aplikasi eksternal.
-- Jangan menggunakan external browser fallback.
-- Jangan mengizinkan scheme selain HTTP/HTTPS.
-- Jangan menggunakan "contains()" untuk validasi domain.
-- Gunakan hostname dari parsed URI.
-- Cegah bypass domain seperti:
+```bash
+# Mobile Release Build (Smartphone & Tablet)
+flutter build apk --release --flavor mobile -t lib/main_mobile.dart
+# Output: build/app/outputs/flutter-apk/app-mobile-release.apk -> IDLIX.apk
 
-example.com.evil.com
+# Android TV / STB Release Build
+flutter build apk --release --flavor tv -t lib/main_tv.dart
+# Output: build/app/outputs/flutter-apk/app-tv-release.apk -> IDLIX-TV.apk
+```
 
-- Intercept navigation sebelum URL dibuka.
-- Intercept popup/new window jika didukung package.
-- Block domain iklan pada request level jika package mendukung.
-
----
-
-24. Expected Final Behavior
-
-Contoh konfigurasi:
-
-Main URL:
-https://example.com
-
-User membuka:
-
-https://example.com/article/1
-
-Result:
-
-ALLOW
-
-Website redirect ke:
-
-https://example.com/login
-
-Result:
-
-ALLOW
-
-Website redirect ke:
-
-https://ads.google.com/click
-
-Result:
-
-BLOCK
-
-Website membuka:
-
-https://google.com
-
-Result:
-
-BLOCK
-
-Website mencoba membuka:
-
-whatsapp://send?phone=123
-
-Result:
-
-BLOCK
-
-Website mencoba membuka:
-
-intent://something
-
-Result:
-
-BLOCK
-
-Website memuat:
-
-https://securepubads.g.doubleclick.net/tag.js
-
-Result:
-
-BLOCK
-
-Website membuka popup:
-
-https://advertisement-domain.com
-
-Result:
-
-BLOCK
-
----
-
-25. Final Requirements
-
-Implementasikan aplikasi Flutter yang:
-
-- Menampilkan modal input URL saat pertama kali aplikasi dibuka.
-- Menyimpan URL utama secara lokal.
-- Otomatis membuka URL tersimpan pada startup berikutnya.
-- Menggunakan WebView.
-- Mengizinkan hanya domain utama dan subdomainnya.
-- Memblokir navigation ke domain lain.
-- Memblokir redirect ke domain lain.
-- Memblokir popup dan new window.
-- Memblokir scheme selain HTTP dan HTTPS.
-- Tidak membuka browser eksternal.
-- Tidak membuka aplikasi eksternal.
-- Memiliki ad blocklist.
-- Memblokir request iklan jika WebView implementation mendukung request interception.
-- Memiliki loading state.
-- Memiliki error handling.
-- Memiliki tombol atau halaman settings untuk mengganti URL utama.
-- Memiliki kode yang clean, modular, dan mudah dikembangkan.
-- Jangan membuat backend karena seluruh aplikasi berjalan secara lokal.
-- Jangan menambahkan fitur yang tidak disebutkan dalam spesifikasi ini.
+Releases are published directly to GitHub Releases with matching tags (e.g. `v1.6.0`), and metadata is updated synchronously in `config.json` on the `main` branch to guarantee seamless in-app update delivery.
