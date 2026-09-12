@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_domain_lock/core/services/storage_service.dart';
-import 'package:webview_domain_lock/features/cast/models/detected_video.dart';
-import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_modal_bottom_sheet.dart';
+import 'package:webview_domain_lock/features/cast/presentation/widgets/draggable_cast_button.dart';
 import 'package:webview_domain_lock/features/cast/services/cast_manager.dart';
 import 'package:webview_domain_lock/features/cast/services/video_detector_service.dart';
 import 'package:webview_domain_lock/features/tv/presentation/widgets/tv_quick_menu.dart';
@@ -397,34 +396,11 @@ class _WebViewPageState extends State<WebViewPage> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        floatingActionButton: _fullscreenCustomWidget != null
-            ? null
-            : ValueListenableBuilder<List<DetectedVideo>>(
-                valueListenable: _videoDetectorService.detectedVideosNotifier,
-                builder: (context, videos, _) {
-                  if (videos.isEmpty || _castManager.isCasting) {
-                    return const SizedBox.shrink();
-                  }
-                  return FloatingActionButton.extended(
-                    onPressed: () {
-                      CastModalBottomSheet.show(
-                        context: context,
-                        videoDetectorService: _videoDetectorService,
-                        castManager: _castManager,
-                      );
-                    },
-                    icon: const Icon(Icons.cast),
-                    label: Text('Cast Video (${videos.length})'),
-                    backgroundColor: Colors.blueAccent,
-                    foregroundColor: Colors.white,
-                  );
-                },
-              ),
         body: SafeArea(
           top: !widget.isTv,
           bottom: false,
           child: Stack(
-          children: [
+            children: [
             // 1. Fullscreen Custom HTML5 Video Widget jika dipicu oleh player website
             if (_fullscreenCustomWidget != null)
               Positioned.fill(child: _fullscreenCustomWidget!),
@@ -488,7 +464,14 @@ class _WebViewPageState extends State<WebViewPage> {
             if (_isLoading && !_hasError && _fullscreenCustomWidget == null)
               LoadingOverlay(progress: _loadingProgress),
 
-            // 5. Kursor Virtual Mouse untuk Remote TV
+            // 5. Tombol Floating Cast Bulat & Dapat Digeser (Draggable)
+            if (_fullscreenCustomWidget == null)
+              DraggableCastButton(
+                videoDetectorService: _videoDetectorService,
+                castManager: _castManager,
+              ),
+
+            // 6. Kursor Virtual Mouse untuk Remote TV
             if (widget.isTv && _tvRemoteController != null && _fullscreenCustomWidget == null)
               TvVirtualCursor(remoteController: _tvRemoteController!),
 
