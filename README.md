@@ -7,7 +7,10 @@
 Aplikasi browser streaming khusus **IDLIX** berbasis Flutter WebView berperforma tinggi, dirancang untuk berjalan optimal di **Android TV**, **Google TV**, **Android Box (STB)**, maupun **Smartphone & Tablet Android**.
 
 Aplikasi ini mengatasi masalah umum saat mengakses situs streaming:
-- **Bebas Iklan & Redirect:** Dilengkapi proteksi **Domain Lock** dan **Ad Blocking** untuk mencegah popup, tab baru jebakan, dan iklan berbahaya.
+- **Bebas Iklan & Popup Ads Blocked:** Dilengkapi proteksi **Domain Lock** dan **Ad Blocking** untuk mencegah popup, tab baru jebakan, dan iklan berbahaya dengan notifikasi "Popup Ads Blocked".
+- **Splashscreen Sinematik ala Netflix:** Animasi pembuka logo IDLIX beraksen merah ribbon dengan efek pulsating radial glow dan zoom halus.
+- **In-App Update Otomatis:** Deteksi update aplikasi langsung dari GitHub Releases via `config.json` dan instalasi update langsung di dalam aplikasi (In-App Update).
+- **Tombol Cast Bulat & Draggable:** Floating action button cast berbentuk bulat yang dapat digeser bebas ke mana saja di layar HP & TV.
 - **Ramah Remote TV:** Menggunakan **Virtual Mouse (Kursor Layar D-Pad)** dengan akselerasi halus dan auto-scroll untuk kemudahan navigasi di TV tanpa mouse fisik.
 - **Domain IDLIX Selalu Terkini:** Menggunakan sistem **Dynamic URL dari GitHub Raw**, sehingga jika alamat website IDLIX berganti, URL diperbarui langsung dari file `config.json` di GitHub tanpa perlu update aplikasi.
 - **Deteksi Stream & Cast Video:** Menangkap stream video (HLS `.m3u8` / `.mp4`) beserta subtitle (Bahasa Indonesia & Inggris) dan dapat di-cast langsung ke **Smart TV / Chromecast / DLNA**.
@@ -20,10 +23,10 @@ Tersedia dalam **2 APK terpisah** yang dioptimalkan secara spesifik untuk masing
 
 | Perangkat | Nama Aplikasi | File APK | Keterangan |
 |---|---|---|---|
-| 📱 **HP & Tablet Android** | **IDLIX** | [`IDLIX.apk`](./IDLIX.apk) | Layar penuh tanpa navbar, navigasi sentuh native, auto-detect cast video |
+| 📱 **HP & Tablet Android** | **IDLIX** | [`IDLIX.apk`](./IDLIX.apk) | Layar penuh tanpa navbar, tombol cast bulat draggable, auto-detect cast video |
 | 📺 **Android TV & STB Box** | **IDLIX TV** | [`IDLIX-TV.apk`](./IDLIX-TV.apk) | Banner Leanback launcher TV, kursor D-Pad remote, auto-scroll, menu zoom TV |
 
-- **Halaman Releases:** [IDLIX-App GitHub Releases](https://github.com/Asadaaaaa/IDLIX-App/releases/tag/v1.4.0)
+- **Halaman Releases:** [IDLIX-App GitHub Releases](https://github.com/Asadaaaaa/IDLIX-App/releases/tag/v1.6.0)
 - **Persyaratan Sistem:** Android 5.0 (Lollipop) atau lebih baru (SDK 21+).
 - **Layar Penuh (Immersive):** Navbar atas & bawah telah dihilangkan sehingga tampilan web IDLIX memenuhi layar sepenuhnya.
 

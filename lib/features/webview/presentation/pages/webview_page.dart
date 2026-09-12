@@ -11,6 +11,9 @@ import 'package:webview_domain_lock/features/tv/services/tv_remote_controller.da
 import 'package:webview_domain_lock/features/webview/models/webview_config.dart';
 import 'package:webview_domain_lock/features/webview/presentation/widgets/loading_overlay.dart';
 import 'package:webview_domain_lock/core/services/remote_config_service.dart';
+import 'package:webview_domain_lock/features/update/presentation/widgets/app_update_dialog.dart';
+import 'package:webview_domain_lock/features/update/services/app_update_service.dart';
+import 'package:webview_domain_lock/features/webview/presentation/widgets/idlix_splash_screen.dart';
 import 'package:webview_domain_lock/features/webview/services/webview_navigation_service.dart';
 import 'package:dart_cast/dart_cast.dart';
 
@@ -41,10 +44,13 @@ class _WebViewPageState extends State<WebViewPage> {
   WebViewController? _controller;
   WebViewConfig? _config;
 
+  late final AppUpdateService _updateService;
+
   bool _isLoading = true;
   int _loadingProgress = 0;
   bool _hasError = false;
   String? _errorMessage;
+  bool _isInitialSplashVisible = true;
 
   bool _isTvMenuOpen = false;
   Widget? _fullscreenCustomWidget;
@@ -57,6 +63,7 @@ class _WebViewPageState extends State<WebViewPage> {
     _videoDetectorService = VideoDetectorService();
     _castManager = CastManager();
     _castManager.init();
+    _updateService = AppUpdateService();
     _config = widget.initialConfig;
 
     if (widget.isTv) {
@@ -123,6 +130,7 @@ class _WebViewPageState extends State<WebViewPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeWebView();
       _checkRemoteConfigUpdate();
+      _checkForAppUpdate();
     });
   }
 
@@ -175,6 +183,39 @@ class _WebViewPageState extends State<WebViewPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Gagal memeriksa pembaruan domain IDLIX dari GitHub.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Memeriksa pembaruan aplikasi IDLIX dari GitHub raw
+  Future<void> _checkForAppUpdate({bool showFeedback = false}) async {
+    try {
+      final updateInfo = await _updateService.checkForUpdate();
+      if (!mounted) return;
+
+      if (updateInfo != null) {
+        await AppUpdateDialog.show(
+          context: context,
+          updateInfo: updateInfo,
+          isTv: widget.isTv,
+          updateService: _updateService,
+        );
+      } else if (showFeedback) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aplikasi IDLIX sudah versi terbaru.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memeriksa pembaruan aplikasi.'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -331,30 +372,26 @@ class _WebViewPageState extends State<WebViewPage> {
   }
 
   void _handleBlockedNavigation(NavigationResult result, String url) {
-    if (!mounted) return;
-
-    String reason;
-    switch (result) {
-      case NavigationResult.blockedInvalidScheme:
-        reason = 'External app or invalid scheme blocked';
-        break;
-      case NavigationResult.blockedAdDomain:
-        reason = 'Ad domain blocked';
-        break;
-      case NavigationResult.blockedExternalDomain:
-        reason = 'External domain blocked';
-        break;
-      case NavigationResult.allowed:
-        return;
-    }
+    if (!mounted || result == NavigationResult.allowed) return;
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$reason ($url)'),
-        duration: const Duration(seconds: 3),
+        content: Row(
+          children: const [
+            Icon(Icons.shield, color: Colors.amber, size: 18),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Popup Ads Blocked',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: Colors.red.shade900.withValues(alpha: 0.9),
       ),
     );
   }
@@ -460,8 +497,22 @@ class _WebViewPageState extends State<WebViewPage> {
                 ),
               ),
 
-            // 4. Loading Overlay
-            if (_isLoading && !_hasError && _fullscreenCustomWidget == null)
+            // 4. Splash Screen Sinematik IDLIX saat pemuatan awal
+            if (_isInitialSplashVisible && _fullscreenCustomWidget == null)
+              IdlixSplashScreen(
+                loadingProgress: _loadingProgress,
+                isFinished: !_isLoading && !_hasError,
+                onDismissed: () {
+                  if (mounted) {
+                    setState(() {
+                      _isInitialSplashVisible = false;
+                    });
+                  }
+                },
+              ),
+
+            // 4b. Loading Overlay saat navigasi setelah splashscreen selesai
+            if (!_isInitialSplashVisible && _isLoading && !_hasError && _fullscreenCustomWidget == null)
               LoadingOverlay(progress: _loadingProgress),
 
             // 5. Tombol Floating Cast Bulat & Dapat Digeser (Draggable)
@@ -524,7 +575,10 @@ class _WebViewPageState extends State<WebViewPage> {
                   getController: () => _controller!,
                   videoDetectorService: _videoDetectorService,
                   castManager: _castManager,
-                  onOpenSettings: () => _checkRemoteConfigUpdate(showFeedback: true),
+                  onOpenSettings: () {
+                    _checkRemoteConfigUpdate(showFeedback: true);
+                    _checkForAppUpdate(showFeedback: true);
+                  },
                   onClose: () {
                     setState(() {
                       _isTvMenuOpen = false;
