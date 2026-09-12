@@ -13,18 +13,20 @@ import 'package:webview_domain_lock/features/tv/presentation/widgets/tv_virtual_
 import 'package:webview_domain_lock/features/tv/services/tv_remote_controller.dart';
 import 'package:webview_domain_lock/features/webview/models/webview_config.dart';
 import 'package:webview_domain_lock/features/webview/presentation/widgets/loading_overlay.dart';
-import 'package:webview_domain_lock/features/webview/presentation/widgets/url_input_dialog.dart';
+import 'package:webview_domain_lock/core/services/remote_config_service.dart';
 import 'package:webview_domain_lock/features/webview/services/webview_navigation_service.dart';
 import 'package:dart_cast/dart_cast.dart';
 
 class WebViewPage extends StatefulWidget {
   final StorageService storageService;
-  final WebViewConfig? initialConfig;
+  final RemoteConfigService remoteConfigService;
+  final WebViewConfig initialConfig;
 
   const WebViewPage({
     super.key,
     required this.storageService,
-    this.initialConfig,
+    required this.remoteConfigService,
+    required this.initialConfig,
   });
 
   @override
@@ -118,11 +120,8 @@ class _WebViewPageState extends State<WebViewPage> {
     _tvRemoteController.init();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_config == null) {
-        _showInitialUrlDialog();
-      } else {
-        _initializeWebView();
-      }
+      _initializeWebView();
+      _checkRemoteConfigUpdate();
     });
   }
 
@@ -133,66 +132,49 @@ class _WebViewPageState extends State<WebViewPage> {
     super.dispose();
   }
 
-  /// Menampilkan dialog input URL pertama kali saat aplikasi dibuka
-  Future<void> _showInitialUrlDialog() async {
-    final result = await showDialog<WebViewConfig>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const UrlInputDialog(
-        canDismiss: false,
-        title: 'Open Website',
-        submitButtonText: 'Open',
-      ),
-    );
+  /// Memeriksa pembaruan URL domain dari GitHub raw secara berkala atau saat diminta pengguna
+  Future<void> _checkRemoteConfigUpdate({bool showFeedback = false}) async {
+    try {
+      final latest = await widget.remoteConfigService.fetchLatestConfig();
+      if (!mounted) return;
 
-    if (result != null && mounted) {
-      await widget.storageService.saveConfig(
-        mainUrl: result.mainUrl,
-        allowedHost: result.allowedHost,
-      );
-      setState(() {
-        _config = result;
-      });
-      _initializeWebView();
-    }
-  }
+      if (latest.mainUrl != _config?.mainUrl || latest.allowedHost != _config?.allowedHost) {
+        setState(() {
+          _config = latest;
+          _hasError = false;
+          _errorMessage = null;
+          _isLoading = true;
+        });
 
-  /// Membuka dialog pengaturan untuk mengganti URL utama
-  Future<void> _openSettingsDialog() async {
-    final result = await showDialog<WebViewConfig>(
-      context: context,
-      builder: (context) => UrlInputDialog(
-        canDismiss: true,
-        initialUrl: _config?.mainUrl,
-        title: 'Settings - Change URL',
-        submitButtonText: 'Save & Reload',
-      ),
-    );
+        if (_controller != null) {
+          await _controller!.loadRequest(Uri.parse(latest.mainUrl));
+        } else {
+          _initializeWebView();
+        }
 
-    if (result != null && mounted) {
-      await widget.storageService.saveConfig(
-        mainUrl: result.mainUrl,
-        allowedHost: result.allowedHost,
-      );
-      setState(() {
-        _config = result;
-        _hasError = false;
-        _errorMessage = null;
-        _isLoading = true;
-      });
-
-      if (_controller != null) {
-        await _controller!.clearCache();
-        await _controller!.loadRequest(Uri.parse(result.mainUrl));
-      } else {
-        _initializeWebView();
-      }
-
-      if (mounted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Domain IDLIX diperbarui: ${latest.mainUrl}'),
+              backgroundColor: Colors.teal,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else if (showFeedback && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Domain lock updated to: ${result.allowedHost}'),
+            content: Text('Domain IDLIX sudah yang terbaru (${latest.mainUrl})'),
             duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memeriksa pembaruan domain IDLIX dari GitHub.'),
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -443,9 +425,9 @@ class _WebViewPageState extends State<WebViewPage> {
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.settings),
-                    tooltip: 'Settings',
-                    onPressed: _openSettingsDialog,
+                    icon: const Icon(Icons.sync),
+                    tooltip: 'Cek Update Domain',
+                    onPressed: () => _checkRemoteConfigUpdate(showFeedback: true),
                   ),
                 ],
               ),
@@ -596,7 +578,7 @@ class _WebViewPageState extends State<WebViewPage> {
                   getController: () => _controller!,
                   videoDetectorService: _videoDetectorService,
                   castManager: _castManager,
-                  onOpenSettings: _openSettingsDialog,
+                  onOpenSettings: () => _checkRemoteConfigUpdate(showFeedback: true),
                   onClose: () {
                     setState(() {
                       _isTvMenuOpen = false;

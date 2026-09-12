@@ -71,17 +71,19 @@ File APK release yang sudah dikompilasi tersedia langsung:
 - Memblokir domain iklan populer (DoubleClick, AdSense, Taboola, Outbrain, PopAds, PopCash, dll.).
 - Mencegah pembukaan popup atau window baru (`window.open` dan `target="_blank"` dinetralkan).
 
-### 4. ⚙️ URL Input & Local Storage
-- Menampilkan modal input URL saat pertama kali aplikasi dibuka.
-- Otomatis menormalisasi URL (menambahkan `https://`).
-- Menyimpan URL utama di penyimpanan lokal (`shared_preferences`) dan otomatis memuatnya pada startup berikutnya.
-- Menu pengaturan untuk mengganti URL utama kapan saja.
+### 4. 🌐 Auto Remote Config via GitHub Raw (Tanpa Backend)
+- **Otomatis Tanpa Input Manual:** Pengguna tidak perlu lagi mengetikkan URL saat aplikasi dibuka.
+- **Konfigurasi Terpusat di GitHub:** URL target dan allowed host diambil secara dinamis dari file [`config.json`](./config.json) di GitHub raw:
+  `https://raw.githubusercontent.com/Asadaaaaa/IDLIX-App/main/config.json`
+- **Mudah Diperbarui Kapan Saja:** Karena situs IDLIX sering berganti domain/mirror, Anda cukup mengubah URL pada file `config.json` di repositori GitHub. Semua aplikasi pengguna akan otomatis menyinkronkan domain baru saat dibuka atau saat menekan tombol **Update URL**.
+- **Offline Cache & Fallback:** Dilengkapi penyimpanan lokal (`SharedPreferences`), fallback domain bawaan (`https://z2.idlixku.com`), dan CDN mirror (jsDelivr) sehingga aplikasi tetap dapat dimuat dengan cepat dalam kondisi jaringan apa pun.
 
 ---
 
 ## 📁 Struktur Project
 
 ```
+config.json                          <-- File JSON konfigurasi URL IDLIX dinamis
 lib/
 ├── main.dart
 ├── app/
@@ -111,7 +113,6 @@ lib/
 │       │   ├── pages/
 │       │   │   └── webview_page.dart
 │       │   └── widgets/
-│       │       ├── url_input_dialog.dart
 │       │       └── loading_overlay.dart
 │       ├── services/
 │       │   ├── webview_navigation_service.dart
@@ -122,6 +123,7 @@ lib/
 │   ├── constants/
 │   │   └── ad_blocklist.dart
 │   ├── services/
+│   │   ├── remote_config_service.dart
 │   │   └── storage_service.dart
 │   └── utils/
 │       ├── url_utils.dart

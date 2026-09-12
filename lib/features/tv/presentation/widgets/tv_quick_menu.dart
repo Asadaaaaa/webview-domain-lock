@@ -250,8 +250,8 @@ class TvQuickMenu extends StatelessWidget {
                     },
                   ),
                   _buildActionButton(
-                    icon: Icons.settings,
-                    label: 'Ganti URL',
+                    icon: Icons.sync,
+                    label: 'Update URL',
                     onTap: () {
                       onClose();
                       onOpenSettings();
