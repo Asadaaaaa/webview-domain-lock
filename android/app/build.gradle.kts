@@ -29,6 +29,21 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "default"
+
+    productFlavors {
+        create("mobile") {
+            dimension = "default"
+            applicationId = "com.idlix.app"
+            manifestPlaceholders["appName"] = "IDLIX"
+        }
+        create("tv") {
+            dimension = "default"
+            applicationId = "com.idlix.app.tv"
+            manifestPlaceholders["appName"] = "IDLIX TV"
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

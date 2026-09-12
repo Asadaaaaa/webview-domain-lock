@@ -16,11 +16,16 @@ Aplikasi ini mengatasi masalah umum saat mengakses situs streaming:
 
 ## 📱 Download APK Release
 
-File APK release yang sudah siap pasang (prebuilt) tersedia langsung:
-- **Download APK:** [`webview-domain-lock.apk`](./webview-domain-lock.apk) (52.4 MB)
-- **Halaman Releases:** [IDLIX-App GitHub Releases](https://github.com/Asadaaaaa/IDLIX-App/releases/tag/v1.3.0)
-- **Persyaratan Sistem:** Android 5.0 (Lollipop) atau lebih baru (HP, Tablet, STB Box, Android TV, Google TV).
-- **Android TV Launcher:** Dilengkapi banner Leanback launcher bawaan (`LEANBACK_LAUNCHER`).
+Tersedia dalam **2 APK terpisah** yang dioptimalkan secara spesifik untuk masing-masing perangkat:
+
+| Perangkat | Nama Aplikasi | File APK | Keterangan |
+|---|---|---|---|
+| 📱 **HP & Tablet Android** | **IDLIX** | [`IDLIX.apk`](./IDLIX.apk) | Layar penuh tanpa navbar, navigasi sentuh native, auto-detect cast video |
+| 📺 **Android TV & STB Box** | **IDLIX TV** | [`IDLIX-TV.apk`](./IDLIX-TV.apk) | Banner Leanback launcher TV, kursor D-Pad remote, auto-scroll, menu zoom TV |
+
+- **Halaman Releases:** [IDLIX-App GitHub Releases](https://github.com/Asadaaaaa/IDLIX-App/releases/tag/v1.4.0)
+- **Persyaratan Sistem:** Android 5.0 (Lollipop) atau lebih baru (SDK 21+).
+- **Layar Penuh (Immersive):** Navbar atas & bawah telah dihilangkan sehingga tampilan web IDLIX memenuhi layar sepenuhnya.
 
 ---
 
@@ -167,7 +172,14 @@ flutter test
 ```
 
 ### 3. Build APK Release:
-```bash
-flutter build apk --release
-```
-File hasil build akan berada di: `build/app/outputs/flutter-apk/app-release.apk`.
+- **Build APK HP / Mobile (`IDLIX`):**
+  ```bash
+  flutter build apk --release --flavor mobile -t lib/main_mobile.dart
+  ```
+  File output: `build/app/outputs/flutter-apk/app-mobile-release.apk` (`IDLIX.apk`).
+
+- **Build APK Android TV / STB (`IDLIX TV`):**
+  ```bash
+  flutter build apk --release --flavor tv -t lib/main_tv.dart
+  ```
+  File output: `build/app/outputs/flutter-apk/app-tv-release.apk` (`IDLIX-TV.apk`).

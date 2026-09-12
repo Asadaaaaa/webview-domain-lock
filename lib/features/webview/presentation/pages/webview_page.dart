@@ -3,8 +3,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_domain_lock/core/services/storage_service.dart';
 import 'package:webview_domain_lock/features/cast/models/detected_video.dart';
-import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_button.dart';
-import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_control_bar.dart';
 import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_modal_bottom_sheet.dart';
 import 'package:webview_domain_lock/features/cast/services/cast_manager.dart';
 import 'package:webview_domain_lock/features/cast/services/video_detector_service.dart';
@@ -21,12 +19,14 @@ class WebViewPage extends StatefulWidget {
   final StorageService storageService;
   final RemoteConfigService remoteConfigService;
   final WebViewConfig initialConfig;
+  final bool isTv;
 
   const WebViewPage({
     super.key,
     required this.storageService,
     required this.remoteConfigService,
     required this.initialConfig,
+    this.isTv = false,
   });
 
   @override
@@ -37,7 +37,7 @@ class _WebViewPageState extends State<WebViewPage> {
   late final WebViewNavigationService _navigationService;
   late final VideoDetectorService _videoDetectorService;
   late final CastManager _castManager;
-  late final TvRemoteController _tvRemoteController;
+  TvRemoteController? _tvRemoteController;
 
   WebViewController? _controller;
   WebViewConfig? _config;
@@ -60,64 +60,66 @@ class _WebViewPageState extends State<WebViewPage> {
     _castManager.init();
     _config = widget.initialConfig;
 
-    _tvRemoteController = TvRemoteController(
-      getController: () => _controller!,
-      onToggleMenu: () {
-        setState(() {
-          _isTvMenuOpen = !_isTvMenuOpen;
-        });
-      },
-      onBack: () => _handleBackPress(),
-      onMediaPlayPause: () {
-        if (_castManager.isCasting) {
-          final isPlaying =
-              _castManager.sessionStateNotifier.value == SessionState.playing;
-          if (isPlaying) {
-            _castManager.pause();
+    if (widget.isTv) {
+      _tvRemoteController = TvRemoteController(
+        getController: () => _controller!,
+        onToggleMenu: () {
+          setState(() {
+            _isTvMenuOpen = !_isTvMenuOpen;
+          });
+        },
+        onBack: () => _handleBackPress(),
+        onMediaPlayPause: () {
+          if (_castManager.isCasting) {
+            final isPlaying =
+                _castManager.sessionStateNotifier.value == SessionState.playing;
+            if (isPlaying) {
+              _castManager.pause();
+            } else {
+              _castManager.play();
+            }
           } else {
-            _castManager.play();
+            _controller?.runJavaScript('''
+              (function() {
+                var videos = document.querySelectorAll('video');
+                if (videos.length > 0) {
+                  var v = videos[0];
+                  if (v.paused) v.play(); else v.pause();
+                }
+              })();
+            ''').catchError((_) {});
           }
-        } else {
-          _controller?.runJavaScript('''
-            (function() {
-              var videos = document.querySelectorAll('video');
-              if (videos.length > 0) {
-                var v = videos[0];
-                if (v.paused) v.play(); else v.pause();
-              }
-            })();
-          ''').catchError((_) {});
-        }
-      },
-      onMediaForward: () {
-        if (_castManager.isCasting) {
-          final cur = _castManager.positionNotifier.value;
-          _castManager.seek(cur + const Duration(seconds: 10));
-        } else {
-          _controller?.runJavaScript('''
-            (function() {
-              var videos = document.querySelectorAll('video');
-              if (videos.length > 0) videos[0].currentTime += 10;
-            })();
-          ''').catchError((_) {});
-        }
-      },
-      onMediaRewind: () {
-        if (_castManager.isCasting) {
-          final cur = _castManager.positionNotifier.value;
-          final newPos = cur - const Duration(seconds: 10);
-          _castManager.seek(newPos.isNegative ? Duration.zero : newPos);
-        } else {
-          _controller?.runJavaScript('''
-            (function() {
-              var videos = document.querySelectorAll('video');
-              if (videos.length > 0) videos[0].currentTime = Math.max(0, videos[0].currentTime - 10);
-            })();
-          ''').catchError((_) {});
-        }
-      },
-    );
-    _tvRemoteController.init();
+        },
+        onMediaForward: () {
+          if (_castManager.isCasting) {
+            final cur = _castManager.positionNotifier.value;
+            _castManager.seek(cur + const Duration(seconds: 10));
+          } else {
+            _controller?.runJavaScript('''
+              (function() {
+                var videos = document.querySelectorAll('video');
+                if (videos.length > 0) videos[0].currentTime += 10;
+              })();
+            ''').catchError((_) {});
+          }
+        },
+        onMediaRewind: () {
+          if (_castManager.isCasting) {
+            final cur = _castManager.positionNotifier.value;
+            final newPos = cur - const Duration(seconds: 10);
+            _castManager.seek(newPos.isNegative ? Duration.zero : newPos);
+          } else {
+            _controller?.runJavaScript('''
+              (function() {
+                var videos = document.querySelectorAll('video');
+                if (videos.length > 0) videos[0].currentTime = Math.max(0, videos[0].currentTime - 10);
+              })();
+            ''').catchError((_) {});
+          }
+        },
+      );
+      _tvRemoteController!.init();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeWebView();
@@ -127,7 +129,7 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   void dispose() {
-    _tvRemoteController.dispose();
+    _tvRemoteController?.dispose();
     _castManager.stopDiscovery();
     super.dispose();
   }
@@ -246,12 +248,14 @@ class _WebViewPageState extends State<WebViewPage> {
               controller
                   .runJavaScript(VideoDetectorService.getInjectionScript())
                   .catchError((_) {});
-              // Terapkan zoom default untuk layar TV
-              controller
-                  .runJavaScript(
-                    "document.body.style.zoom = '${_tvRemoteController.textScaleNotifier.value}';",
-                  )
-                  .catchError((_) {});
+              // Terapkan zoom default untuk layar TV jika di TV
+              if (widget.isTv && _tvRemoteController != null) {
+                controller
+                    .runJavaScript(
+                      "document.body.style.zoom = '${_tvRemoteController!.textScaleNotifier.value}';",
+                    )
+                    .catchError((_) {});
+              }
             }
           },
           onWebResourceError: (WebResourceError error) {
@@ -381,7 +385,9 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    _tvRemoteController.updateScreenSize(MediaQuery.of(context).size);
+    if (widget.isTv && _tvRemoteController != null) {
+      _tvRemoteController!.updateScreenSize(MediaQuery.of(context).size);
+    }
 
     return PopScope(
       canPop: false,
@@ -390,53 +396,7 @@ class _WebViewPageState extends State<WebViewPage> {
         await _handleBackPress();
       },
       child: Scaffold(
-        appBar: _fullscreenCustomWidget != null
-            ? null
-            : AppBar(
-                title: Text(
-                  _config?.allowedHost ?? 'WebView Domain Lock',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.settings_remote),
-                    tooltip: 'TV Remote Menu',
-                    onPressed: () {
-                      setState(() {
-                        _isTvMenuOpen = !_isTvMenuOpen;
-                      });
-                    },
-                  ),
-                  CastButton(
-                    videoDetectorService: _videoDetectorService,
-                    castManager: _castManager,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Reload',
-                    onPressed: () {
-                      if (_controller != null) {
-                        setState(() {
-                          _hasError = false;
-                          _errorMessage = null;
-                        });
-                        _controller!.reload();
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.sync),
-                    tooltip: 'Cek Update Domain',
-                    onPressed: () => _checkRemoteConfigUpdate(showFeedback: true),
-                  ),
-                ],
-              ),
-        bottomNavigationBar: _fullscreenCustomWidget != null
-            ? null
-            : CastControlBar(
-                castManager: _castManager,
-                videoDetectorService: _videoDetectorService,
-              ),
+        backgroundColor: Colors.black,
         floatingActionButton: _fullscreenCustomWidget != null
             ? null
             : ValueListenableBuilder<List<DetectedVideo>>(
@@ -460,7 +420,10 @@ class _WebViewPageState extends State<WebViewPage> {
                   );
                 },
               ),
-        body: Stack(
+        body: SafeArea(
+          top: !widget.isTv,
+          bottom: false,
+          child: Stack(
           children: [
             // 1. Fullscreen Custom HTML5 Video Widget jika dipicu oleh player website
             if (_fullscreenCustomWidget != null)
@@ -526,11 +489,11 @@ class _WebViewPageState extends State<WebViewPage> {
               LoadingOverlay(progress: _loadingProgress),
 
             // 5. Kursor Virtual Mouse untuk Remote TV
-            if (_fullscreenCustomWidget == null)
-              TvVirtualCursor(remoteController: _tvRemoteController),
+            if (widget.isTv && _tvRemoteController != null && _fullscreenCustomWidget == null)
+              TvVirtualCursor(remoteController: _tvRemoteController!),
 
-            // 6. Tombol Akses Cepat Menu Remote TV di Layar
-            if (_fullscreenCustomWidget == null)
+            // 6. Tombol Akses Cepat Menu Remote TV di Layar (Hanya di TV)
+            if (widget.isTv && _fullscreenCustomWidget == null)
               Positioned(
                 top: 12,
                 left: 12,
@@ -571,10 +534,10 @@ class _WebViewPageState extends State<WebViewPage> {
               ),
 
             // 7. Menu Cepat TV Overlay
-            if (_isTvMenuOpen)
+            if (widget.isTv && _isTvMenuOpen && _tvRemoteController != null)
               Positioned.fill(
                 child: TvQuickMenu(
-                  remoteController: _tvRemoteController,
+                  remoteController: _tvRemoteController!,
                   getController: () => _controller!,
                   videoDetectorService: _videoDetectorService,
                   castManager: _castManager,
@@ -588,6 +551,7 @@ class _WebViewPageState extends State<WebViewPage> {
               ),
           ],
         ),
+      ),
       ),
     );
   }

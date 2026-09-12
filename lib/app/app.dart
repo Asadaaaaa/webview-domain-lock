@@ -8,31 +8,30 @@ class DomainLockApp extends StatelessWidget {
   final StorageService storageService;
   final RemoteConfigService remoteConfigService;
   final WebViewConfig initialConfig;
+  final bool isTv;
 
   const DomainLockApp({
     super.key,
     required this.storageService,
     required this.remoteConfigService,
     required this.initialConfig,
+    this.isTv = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'IDLIX TV & Mobile',
+      title: isTv ? 'IDLIX TV' : 'IDLIX',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          elevation: 1,
-          centerTitle: false,
-        ),
       ),
       home: WebViewPage(
         storageService: storageService,
         remoteConfigService: remoteConfigService,
         initialConfig: initialConfig,
+        isTv: isTv,
       ),
     );
   }
