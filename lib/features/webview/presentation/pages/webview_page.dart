@@ -8,10 +8,14 @@ import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_cont
 import 'package:webview_domain_lock/features/cast/presentation/widgets/cast_modal_bottom_sheet.dart';
 import 'package:webview_domain_lock/features/cast/services/cast_manager.dart';
 import 'package:webview_domain_lock/features/cast/services/video_detector_service.dart';
+import 'package:webview_domain_lock/features/tv/presentation/widgets/tv_quick_menu.dart';
+import 'package:webview_domain_lock/features/tv/presentation/widgets/tv_virtual_cursor.dart';
+import 'package:webview_domain_lock/features/tv/services/tv_remote_controller.dart';
 import 'package:webview_domain_lock/features/webview/models/webview_config.dart';
 import 'package:webview_domain_lock/features/webview/presentation/widgets/loading_overlay.dart';
 import 'package:webview_domain_lock/features/webview/presentation/widgets/url_input_dialog.dart';
 import 'package:webview_domain_lock/features/webview/services/webview_navigation_service.dart';
+import 'package:dart_cast/dart_cast.dart';
 
 class WebViewPage extends StatefulWidget {
   final StorageService storageService;
@@ -31,6 +35,7 @@ class _WebViewPageState extends State<WebViewPage> {
   late final WebViewNavigationService _navigationService;
   late final VideoDetectorService _videoDetectorService;
   late final CastManager _castManager;
+  late final TvRemoteController _tvRemoteController;
 
   WebViewController? _controller;
   WebViewConfig? _config;
@@ -40,6 +45,10 @@ class _WebViewPageState extends State<WebViewPage> {
   bool _hasError = false;
   String? _errorMessage;
 
+  bool _isTvMenuOpen = false;
+  Widget? _fullscreenCustomWidget;
+  void Function()? _onHideCustomWidget;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +57,65 @@ class _WebViewPageState extends State<WebViewPage> {
     _castManager = CastManager();
     _castManager.init();
     _config = widget.initialConfig;
+
+    _tvRemoteController = TvRemoteController(
+      getController: () => _controller!,
+      onToggleMenu: () {
+        setState(() {
+          _isTvMenuOpen = !_isTvMenuOpen;
+        });
+      },
+      onBack: () => _handleBackPress(),
+      onMediaPlayPause: () {
+        if (_castManager.isCasting) {
+          final isPlaying =
+              _castManager.sessionStateNotifier.value == SessionState.playing;
+          if (isPlaying) {
+            _castManager.pause();
+          } else {
+            _castManager.play();
+          }
+        } else {
+          _controller?.runJavaScript('''
+            (function() {
+              var videos = document.querySelectorAll('video');
+              if (videos.length > 0) {
+                var v = videos[0];
+                if (v.paused) v.play(); else v.pause();
+              }
+            })();
+          ''').catchError((_) {});
+        }
+      },
+      onMediaForward: () {
+        if (_castManager.isCasting) {
+          final cur = _castManager.positionNotifier.value;
+          _castManager.seek(cur + const Duration(seconds: 10));
+        } else {
+          _controller?.runJavaScript('''
+            (function() {
+              var videos = document.querySelectorAll('video');
+              if (videos.length > 0) videos[0].currentTime += 10;
+            })();
+          ''').catchError((_) {});
+        }
+      },
+      onMediaRewind: () {
+        if (_castManager.isCasting) {
+          final cur = _castManager.positionNotifier.value;
+          final newPos = cur - const Duration(seconds: 10);
+          _castManager.seek(newPos.isNegative ? Duration.zero : newPos);
+        } else {
+          _controller?.runJavaScript('''
+            (function() {
+              var videos = document.querySelectorAll('video');
+              if (videos.length > 0) videos[0].currentTime = Math.max(0, videos[0].currentTime - 10);
+            })();
+          ''').catchError((_) {});
+        }
+      },
+    );
+    _tvRemoteController.init();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_config == null) {
@@ -60,6 +128,7 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   void dispose() {
+    _tvRemoteController.dispose();
     _castManager.stopDiscovery();
     super.dispose();
   }
@@ -139,7 +208,21 @@ class _WebViewPageState extends State<WebViewPage> {
     // Set platform-specific params jika di Android
     if (controller.platform is AndroidWebViewController) {
       final androidController = controller.platform as AndroidWebViewController;
-      androidController.setMediaPlaybackRequiresUserGesture(true);
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+      androidController.setCustomWidgetCallbacks(
+        onShowCustomWidget: (Widget widget, OnHideCustomWidgetCallback callback) {
+          setState(() {
+            _fullscreenCustomWidget = widget;
+            _onHideCustomWidget = callback;
+          });
+        },
+        onHideCustomWidget: () {
+          setState(() {
+            _fullscreenCustomWidget = null;
+            _onHideCustomWidget = null;
+          });
+        },
+      );
     }
 
     controller
@@ -180,6 +263,12 @@ class _WebViewPageState extends State<WebViewPage> {
               // Injeksi JS sniffer video & subtitle
               controller
                   .runJavaScript(VideoDetectorService.getInjectionScript())
+                  .catchError((_) {});
+              // Terapkan zoom default untuk layar TV
+              controller
+                  .runJavaScript(
+                    "document.body.style.zoom = '${_tvRemoteController.textScaleNotifier.value}';",
+                  )
                   .catchError((_) {});
             }
           },
@@ -286,6 +375,19 @@ class _WebViewPageState extends State<WebViewPage> {
   }
 
   Future<void> _handleBackPress() async {
+    if (_fullscreenCustomWidget != null) {
+      _onHideCustomWidget?.call();
+      setState(() {
+        _fullscreenCustomWidget = null;
+      });
+      return;
+    }
+    if (_isTvMenuOpen) {
+      setState(() {
+        _isTvMenuOpen = false;
+      });
+      return;
+    }
     if (_controller != null && await _controller!.canGoBack()) {
       await _controller!.goBack();
     } else {
@@ -297,6 +399,8 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    _tvRemoteController.updateScreenSize(MediaQuery.of(context).size);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -304,66 +408,88 @@ class _WebViewPageState extends State<WebViewPage> {
         await _handleBackPress();
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _config?.allowedHost ?? 'WebView Domain Lock',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            CastButton(
-              videoDetectorService: _videoDetectorService,
-              castManager: _castManager,
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Reload',
-              onPressed: () {
-                if (_controller != null) {
-                  setState(() {
-                    _hasError = false;
-                    _errorMessage = null;
-                  });
-                  _controller!.reload();
-                }
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.settings),
-              tooltip: 'Settings',
-              onPressed: _openSettingsDialog,
-            ),
-          ],
-        ),
-        bottomNavigationBar: CastControlBar(
-          castManager: _castManager,
-          videoDetectorService: _videoDetectorService,
-        ),
-        floatingActionButton: ValueListenableBuilder<List<DetectedVideo>>(
-          valueListenable: _videoDetectorService.detectedVideosNotifier,
-          builder: (context, videos, _) {
-            if (videos.isEmpty || _castManager.isCasting) {
-              return const SizedBox.shrink();
-            }
-            return FloatingActionButton.extended(
-              onPressed: () {
-                CastModalBottomSheet.show(
-                  context: context,
-                  videoDetectorService: _videoDetectorService,
-                  castManager: _castManager,
-                );
-              },
-              icon: const Icon(Icons.cast),
-              label: Text('Cast Video (${videos.length})'),
-              backgroundColor: Colors.blueAccent,
-              foregroundColor: Colors.white,
-            );
-          },
-        ),
+        appBar: _fullscreenCustomWidget != null
+            ? null
+            : AppBar(
+                title: Text(
+                  _config?.allowedHost ?? 'WebView Domain Lock',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.settings_remote),
+                    tooltip: 'TV Remote Menu',
+                    onPressed: () {
+                      setState(() {
+                        _isTvMenuOpen = !_isTvMenuOpen;
+                      });
+                    },
+                  ),
+                  CastButton(
+                    videoDetectorService: _videoDetectorService,
+                    castManager: _castManager,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Reload',
+                    onPressed: () {
+                      if (_controller != null) {
+                        setState(() {
+                          _hasError = false;
+                          _errorMessage = null;
+                        });
+                        _controller!.reload();
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    tooltip: 'Settings',
+                    onPressed: _openSettingsDialog,
+                  ),
+                ],
+              ),
+        bottomNavigationBar: _fullscreenCustomWidget != null
+            ? null
+            : CastControlBar(
+                castManager: _castManager,
+                videoDetectorService: _videoDetectorService,
+              ),
+        floatingActionButton: _fullscreenCustomWidget != null
+            ? null
+            : ValueListenableBuilder<List<DetectedVideo>>(
+                valueListenable: _videoDetectorService.detectedVideosNotifier,
+                builder: (context, videos, _) {
+                  if (videos.isEmpty || _castManager.isCasting) {
+                    return const SizedBox.shrink();
+                  }
+                  return FloatingActionButton.extended(
+                    onPressed: () {
+                      CastModalBottomSheet.show(
+                        context: context,
+                        videoDetectorService: _videoDetectorService,
+                        castManager: _castManager,
+                      );
+                    },
+                    icon: const Icon(Icons.cast),
+                    label: Text('Cast Video (${videos.length})'),
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                  );
+                },
+              ),
         body: Stack(
           children: [
-            if (_controller != null && !_hasError)
+            // 1. Fullscreen Custom HTML5 Video Widget jika dipicu oleh player website
+            if (_fullscreenCustomWidget != null)
+              Positioned.fill(child: _fullscreenCustomWidget!),
+
+            // 2. WebView Biasa
+            if (_controller != null && !_hasError && _fullscreenCustomWidget == null)
               WebViewWidget(controller: _controller!),
-            if (_hasError)
+
+            // 3. Error State
+            if (_hasError && _fullscreenCustomWidget == null)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -412,8 +538,72 @@ class _WebViewPageState extends State<WebViewPage> {
                   ),
                 ),
               ),
-            if (_isLoading && !_hasError)
+
+            // 4. Loading Overlay
+            if (_isLoading && !_hasError && _fullscreenCustomWidget == null)
               LoadingOverlay(progress: _loadingProgress),
+
+            // 5. Kursor Virtual Mouse untuk Remote TV
+            if (_fullscreenCustomWidget == null)
+              TvVirtualCursor(remoteController: _tvRemoteController),
+
+            // 6. Tombol Akses Cepat Menu Remote TV di Layar
+            if (_fullscreenCustomWidget == null)
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isTvMenuOpen = !_isTvMenuOpen;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.settings_remote, color: Colors.blueAccent, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'TV Remote (Menu)',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 7. Menu Cepat TV Overlay
+            if (_isTvMenuOpen)
+              Positioned.fill(
+                child: TvQuickMenu(
+                  remoteController: _tvRemoteController,
+                  getController: () => _controller!,
+                  videoDetectorService: _videoDetectorService,
+                  castManager: _castManager,
+                  onOpenSettings: _openSettingsDialog,
+                  onClose: () {
+                    setState(() {
+                      _isTvMenuOpen = false;
+                    });
+                  },
+                ),
+              ),
           ],
         ),
       ),
